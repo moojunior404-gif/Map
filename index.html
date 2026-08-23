@@ -1,24 +1,808 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>CodeNest</title>
-    <meta name="description" content="CodeNest — built on Replit. Update this description to reflect the app." />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="CodeNest" />
-    <meta property="og:description" content="CodeNest — built on Replit. Update this description to reflect the app." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CodeNest" />
-    <meta name="twitter:description" content="CodeNest — built on Replit. Update this description to reflect the app." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { Check, X, MapPin, Type, ListChecks, Globe2, RotateCcw, Home, Trophy, Flame, Volume2, VolumeX } from "lucide-react";
+
+/* ---------------- Palette ----------------
+   Ink-and-wax-seal theme: a deep midnight desk, brass instruments,
+   and a wax-seal red for the one action that matters on each screen. */
+const C = {
+  bg: "#FFFFFF",
+  surface: "#F7F5F1",
+  panel: "#EFECE5",
+  cream: "#FAF8F4",
+  brass: "#A9861E",
+  seal: "#B5423A",
+  sealSoft: "#D1584F",
+  teal: "#2F726B",
+};
+const FONT = "'Cairo', sans-serif";
+
+/* ---------------- Data: [code, arabic name, lat, lng, alt names...] ---------------- */
+const RAW = [
+["DZ","الجزائر",28.0,1.6],["AO","أنغولا",-11.2,17.9],["BJ","بنين",9.3,2.3],
+["BW","بوتسوانا",-22.3,24.7],["BF","بوركينا فاسو",12.2,-1.6],["BI","بوروندي",-3.4,29.9],
+["CM","الكاميرون",7.4,12.4],["CV","الرأس الأخضر",16.0,-24.0],["CF","أفريقيا الوسطى",6.6,20.9],
+["TD","تشاد",15.5,18.7],["KM","جزر القمر",-11.6,43.3],["CG","الكونغو برازافيل",-0.2,15.8],
+["CD","الكونغو الديمقراطية",-4.0,21.8],["CI","ساحل العاج",7.5,-5.5],["DJ","جيبوتي",11.8,42.6],
+["EG","مصر",26.8,30.8],["GQ","غينيا الاستوائية",1.6,10.6],["ER","إريتريا",15.2,39.8],
+["SZ","إسواتيني",-26.5,31.5],["ET","إثيوبيا",9.1,40.5],["GA","الغابون",-0.8,11.6],
+["GM","غامبيا",13.4,-15.3],["GH","غانا",7.9,-1.0],["GN","غينيا",9.9,-9.7],
+["GW","غينيا بيساو",12.0,-15.2],["KE","كينيا",-0.0,37.9],["LS","ليسوتو",-29.6,28.2],
+["LR","ليبيريا",6.4,-9.4],["LY","ليبيا",26.3,17.2],["MG","مدغشقر",-18.8,46.9],
+["MW","مالاوي",-13.3,34.3],["ML","مالي",17.6,-4.0],["MR","موريتانيا",21.0,-10.9],
+["MU","موريشيوس",-20.3,57.6],["MA","المغرب",31.8,-7.1],["MZ","موزمبيق",-18.7,35.5],
+["NA","ناميبيا",-22.9,18.5],["NE","النيجر",17.6,8.1],["NG","نيجيريا",9.1,8.7],
+["RW","رواندا",-1.9,29.9],["ST","ساو تومي وبرينسيبي",0.2,6.6],["SN","السنغال",14.5,-14.5],
+["SC","سيشل",-4.7,55.5],["SL","سيراليون",8.5,-11.8],["SO","الصومال",5.2,46.2],
+["ZA","جنوب أفريقيا",-30.6,22.9],["SS","جنوب السودان",6.9,31.3],["SD","السودان",12.9,30.2],
+["TZ","تنزانيا",-6.4,34.9],["TG","توغو",8.6,0.8],["TN","تونس",33.9,9.5],
+["UG","أوغندا",1.4,32.3],["ZM","زامبيا",-13.1,27.8],["ZW","زيمبابوي",-19.0,29.2],
+["AF","أفغانستان",33.9,67.7],["AM","أرمينيا",40.1,45.0],["AZ","أذربيجان",40.1,47.6],
+["BH","البحرين",26.0,50.5],["BD","بنغلاديش",23.7,90.4],["BT","بوتان",27.5,90.4],
+["BN","بروناي",4.5,114.7],["KH","كمبوديا",12.6,104.9],["CN","الصين",35.9,104.2,"الصين الشعبية"],
+["CY","قبرص",35.1,33.4],["GE","جورجيا",42.3,43.4],["IN","الهند",20.6,79.0],
+["ID","إندونيسيا",-0.8,113.9],["IR","إيران",32.4,53.7],["IQ","العراق",33.2,43.7],
+["IL","إسرائيل",31.0,34.9],["JP","اليابان",36.2,138.3],["JO","الأردن",31.2,36.9],
+["KZ","كازاخستان",48.0,66.9],["KP","كوريا الشمالية",40.3,127.5],["KR","كوريا الجنوبية",35.9,127.8,"كوريا"],
+["KW","الكويت",29.3,47.5],["KG","قيرغيزستان",41.2,74.8],["LA","لاوس",19.9,102.5],
+["LB","لبنان",33.9,35.9],["MY","ماليزيا",4.2,101.9],["MV","جزر المالديف",3.2,73.2],
+["MN","منغوليا",46.9,103.8],["MM","ميانمار",21.9,95.9],["NP","نيبال",28.4,84.1],
+["OM","عمان",21.5,55.9],["PK","باكستان",30.4,69.3],["PS","فلسطين",31.9,35.2],
+["PH","الفلبين",12.9,121.8],["QA","قطر",25.4,51.2],["SA","السعودية",23.9,45.1,"المملكة العربية السعودية"],
+["SG","سنغافورة",1.3,103.8],["LK","سريلانكا",7.9,80.8],["SY","سوريا",34.8,38.9],
+["TJ","طاجيكستان",38.9,71.3],["TH","تايلاند",15.9,100.9],["TL","تيمور الشرقية",-8.9,125.7],
+["TR","تركيا",38.9,35.2],["TM","تركمانستان",38.9,59.6],["AE","الإمارات",23.4,53.8,"الإمارات العربية المتحدة"],
+["UZ","أوزبكستان",41.4,64.6],["VN","فيتنام",14.1,108.3],["YE","اليمن",15.6,48.5],
+["AL","ألبانيا",41.2,20.2],["AD","أندورا",42.5,1.5],["AT","النمسا",47.5,14.6],
+["BY","بيلاروسيا",53.7,27.9],["BE","بلجيكا",50.5,4.5],["BA","البوسنة والهرسك",43.9,17.7],
+["BG","بلغاريا",42.7,25.5],["HR","كرواتيا",45.1,15.2],["CZ","التشيك",49.8,15.5],
+["DK","الدنمارك",56.3,9.5],["EE","إستونيا",58.6,25.0],["FI","فنلندا",61.9,25.7],
+["FR","فرنسا",46.6,2.2],["DE","ألمانيا",51.2,10.5],["GR","اليونان",39.1,21.8],
+["HU","المجر",47.2,19.5],["IS","آيسلندا",64.9,-19.0],["IE","أيرلندا",53.4,-8.2],
+["IT","إيطاليا",42.5,12.5],["LV","لاتفيا",56.9,24.6],["LI","ليختنشتاين",47.2,9.5],
+["LT","ليتوانيا",55.2,23.9],["LU","لوكسمبورغ",49.8,6.1],["MT","مالطا",35.9,14.4],
+["MD","مولدوفا",47.4,28.4],["MC","موناكو",43.7,7.4],["ME","الجبل الأسود",42.7,19.4],
+["NL","هولندا",52.1,5.3],["MK","مقدونيا الشمالية",41.6,21.7],["NO","النرويج",62.0,10.0],
+["PL","بولندا",51.9,19.1],["PT","البرتغال",39.4,-8.2],["RO","رومانيا",45.9,25.0],
+["RU","روسيا",61.5,105.3,"روسيا الاتحادية"],["SM","سان مارينو",43.9,12.4],["RS","صربيا",44.0,21.0],
+["SK","سلوفاكيا",48.7,19.7],["SI","سلوفينيا",46.1,14.8],["ES","إسبانيا",40.5,-3.7],
+["SE","السويد",60.1,18.6],["CH","سويسرا",46.8,8.2],["UA","أوكرانيا",48.4,31.2],
+["GB","المملكة المتحدة",55.4,-3.4,"بريطانيا","انجلترا"],["VA","الفاتيكان",41.9,12.5],
+["AG","أنتيغوا وباربودا",17.1,-61.8],["BS","الباهاما",25.0,-77.4],["BB","باربادوس",13.2,-59.5],
+["BZ","بليز",17.2,-88.5],["CA","كندا",56.1,-106.3],["CR","كوستاريكا",9.7,-83.8],
+["CU","كوبا",21.5,-77.8],["DM","دومينيكا",15.4,-61.4],["DO","جمهورية الدومينيكان",18.7,-70.2],
+["SV","السلفادور",13.8,-88.9],["GD","غرينادا",12.1,-61.7],["GT","غواتيمالا",15.8,-90.2],
+["HT","هايتي",18.9,-72.3],["HN","هندوراس",15.2,-86.2],["JM","جامايكا",18.1,-77.3],
+["MX","المكسيك",23.6,-102.5],["NI","نيكاراغوا",12.9,-85.2],["PA","بنما",8.5,-80.8],
+["KN","سانت كيتس ونيفيس",17.4,-62.8],["LC","سانت لوسيا",13.9,-60.9],["VC","سانت فينسنت والغرينادين",13.3,-61.2],
+["TT","ترينيداد وتوباغو",10.7,-61.2],["US","الولايات المتحدة",37.1,-95.7,"أمريكا"],
+["AR","الأرجنتين",-38.4,-63.6],["BO","بوليفيا",-16.3,-63.6],["BR","البرازيل",-14.2,-51.9],
+["CL","تشيلي",-35.7,-71.5],["CO","كولومبيا",4.6,-74.3],["EC","الإكوادور",-1.8,-78.2],
+["GY","غيانا",4.9,-58.9],["PY","باراغواي",-23.4,-58.4],["PE","بيرو",-9.2,-75.0],
+["SR","سورينام",3.9,-56.0],["UY","الأوروغواي",-32.5,-55.8],["VE","فنزويلا",6.4,-66.6],
+["AU","أستراليا",-25.3,133.8],["FJ","فيجي",-17.7,178.1],["KI","كيريباتي",1.9,-157.4],
+["MH","جزر مارشال",7.1,171.2],["FM","ميكرونيسيا",7.4,150.6],["NR","ناورو",-0.5,166.9],
+["NZ","نيوزيلندا",-40.9,174.9],["PW","بالاو",7.5,134.6],["PG","بابوا غينيا الجديدة",-6.3,143.9],
+["WS","ساموا",-13.8,-172.1],["SB","جزر سليمان",-9.6,160.2],["TO","تونغا",-21.2,-175.2],
+["TV","توفالو",-7.1,177.6],["VU","فانواتو",-15.4,166.9],
+];
+
+const codeToFlag = (code) =>
+  code.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+
+const COUNTRIES = RAW.map(([code, name, lat, lng, ...alts]) => ({
+  code, name, lat, lng, alts, flag: codeToFlag(code),
+}));
+
+const normalize = (s) =>
+  (s || "")
+    .trim()
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .replace(/^ال/, "")
+    .toLowerCase();
+
+const isCorrectAnswer = (input, country) => {
+  const n = normalize(input);
+  if (!n) return false;
+  const candidates = [country.name, ...country.alts];
+  return candidates.some((c) => normalize(c) === n);
+};
+
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const pick = (n, exclude) => {
+  const pool = COUNTRIES.filter((c) => c.code !== exclude);
+  return shuffle(pool).slice(0, n);
+};
+
+const WORLD_MAP_IMG =
+  "https://upload.wikimedia.org/wikipedia/commons/8/83/Equirectangular_projection_SW.jpg";
+
+const toXY = (lat, lng) => ({
+  x: ((lng + 180) / 360) * 100,
+  y: ((90 - lat) / 180) * 100,
+});
+
+/* ---------------- sound ---------------- */
+function useBeep() {
+  const ctxRef = useRef(null);
+  const [on, setOn] = useState(true);
+  const beep = useCallback(
+    (kind) => {
+      if (!on) return;
+      try {
+        if (!ctxRef.current) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          ctxRef.current = new AC();
+        }
+        const ctx = ctxRef.current;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        if (kind === "ok") {
+          o.type = "sine";
+          o.frequency.setValueAtTime(660, ctx.currentTime);
+          o.frequency.setValueAtTime(880, ctx.currentTime + 0.09);
+        } else {
+          o.type = "square";
+          o.frequency.setValueAtTime(180, ctx.currentTime);
+        }
+        g.gain.setValueAtTime(0.07, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+        o.start();
+        o.stop(ctx.currentTime + 0.28);
+      } catch (e) {
+        /* audio not available, fail silently */
+      }
+    },
+    [on]
+  );
+  return { on, setOn, beep };
+}
+
+/* ---------------- UI atoms ---------------- */
+
+function Stamp({ ok, show }) {
+  if (!show) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-30">
+      <div
+        className={`rounded-full border-[6px] px-8 py-4 rotate-[-8deg] font-black text-2xl tracking-widest ${
+          ok ? "border-emerald-400 text-emerald-400" : "border-rose-500 text-rose-500"
+        }`}
+        style={{
+          fontFamily: FONT,
+          backgroundColor: "rgba(18,20,28,0.6)",
+          animation: "stampIn 420ms cubic-bezier(.2,1.6,.4,1)",
+        }}
+      >
+        {ok ? "صح ✓" : "غلط ✕"}
+      </div>
+    </div>
+  );
+}
+
+function Pips({ history, total }) {
+  return (
+    <div className="flex items-center gap-1 flex-1 mx-3 flex-wrap justify-center">
+      {Array.from({ length: total }).map((_, i) => {
+        const r = history[i];
+        const isCurrent = i === history.length;
+        return (
+          <span
+            key={i}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              isCurrent ? "w-4" : "w-2"
+            }`}
+            style={{
+              backgroundColor:
+                r === true ? "#34d399" : r === false ? "#f43f5e" : isCurrent ? C.brass : "rgba(255,255,255,0.15)",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function TopBar({ onHome, history, total, score, streak, soundOn, onToggleSound }) {
+  return (
+    <div className="flex items-center justify-between px-1 mb-5 gap-2" dir="rtl">
+      <button
+        onClick={onHome}
+        className="flex items-center gap-1.5 text-[#1E2233]/60 hover:text-[#A9861E] transition-colors text-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A9861E] rounded"
+      >
+        <Home size={17} /> <span className="hidden sm:inline">الرئيسية</span>
+      </button>
+      <Pips history={history} total={total} />
+      <div className="flex items-center gap-2 shrink-0">
+        {streak >= 3 && (
+          <span
+            className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ color: C.sealSoft, backgroundColor: C.seal + "22" }}
+            title="متتالية"
+          >
+            <Flame size={13} /> {streak}
+          </span>
+        )}
+        <span className="flex items-center gap-1 font-bold text-sm whitespace-nowrap" style={{ color: C.brass }}>
+          <Trophy size={15} /> {score}/{total}
+        </span>
+        <button
+          onClick={onToggleSound}
+          className="text-[#1E2233]/40 hover:text-[#1E2233] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A9861E] rounded"
+          aria-label="تشغيل/كتم الصوت"
+        >
+          {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- shared round-state hook ---------------- */
+function useRound(roundLen, beep) {
+  const [idx, setIdx] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [mistakes, setMistakes] = useState([]);
+
+  const record = useCallback(
+    (ok, country) => {
+      beep(ok ? "ok" : "bad");
+      setHistory((h) => [...h, ok]);
+      setStreak((s) => (ok ? s + 1 : 0));
+      if (ok) setScore((s) => s + 1);
+      else setMistakes((m) => [...m, country]);
+    },
+    [beep]
+  );
+
+  return { idx, setIdx, score, streak, history, mistakes, record };
+}
+
+/* ---------------- Stage 1: Name + Flag ---------------- */
+
+function Stage1MultipleChoice({ onFinish, roundLen, beep, soundOn, onToggleSound }) {
+  const { idx, setIdx, score, streak, history, mistakes, record } = useRound(roundLen, beep);
+  const [country] = useState(() => shuffle(COUNTRIES).slice(0, roundLen));
+  const [options, setOptions] = useState(() => buildOptions(country[0]));
+  const [chosen, setChosen] = useState(null);
+  const [stamp, setStamp] = useState(null);
+
+  function buildOptions(c) {
+    return shuffle([c, ...pick(3, c.code)]);
+  }
+
+  const current = country[idx];
+
+  const handlePick = useCallback(
+    (opt) => {
+      if (chosen) return;
+      const ok = opt.code === current.code;
+      setChosen(opt.code);
+      setStamp(ok ? "ok" : "bad");
+      record(ok, current);
+      setTimeout(() => {
+        setStamp(null);
+        setChosen(null);
+        if (idx + 1 < roundLen) {
+          setIdx((i) => i + 1);
+          setOptions(buildOptions(country[idx + 1]));
+        } else {
+          onFinish(score + (ok ? 1 : 0), [...mistakes, ...(ok ? [] : [current])]);
+        }
+      }, 750);
+    },
+    [chosen, current, idx, roundLen, score, mistakes, record, onFinish, country]
+  );
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= options.length) handlePick(options[n - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [options, handlePick]);
+
+  return (
+    <div className="relative">
+      <Stamp ok={stamp === "ok"} show={!!stamp} />
+      <TopBar onHome={() => onFinish(null)} history={history} total={roundLen} score={score} streak={streak} soundOn={soundOn} onToggleSound={onToggleSound} />
+      <div className="flex flex-col items-center gap-8">
+        <div className="text-8xl drop-shadow-lg select-none">{current.flag}</div>
+        <p className="text-[#1E2233]/60 text-sm" style={{ fontFamily: FONT }}>
+          دي علم أنهي دولة؟
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
+          {options.map((opt, i) => {
+            const isChosen = chosen === opt.code;
+            const isRight = chosen && opt.code === current.code;
+            return (
+              <button
+                key={opt.code}
+                onClick={() => handlePick(opt)}
+                disabled={!!chosen}
+                className={`relative rounded-xl px-5 py-4 text-lg font-bold border-2 transition-all text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A9861E]
+                  ${
+                    isRight
+                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
+                      : isChosen
+                      ? "bg-rose-500/20 border-rose-500 text-rose-300"
+                      : "bg-black/5 border-black/10 text-[#1E2233] hover:border-[#A9861E]/60"
+                  }`}
+                style={{ fontFamily: FONT }}
+              >
+                <span
+                  className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-black/40 border border-black/10 text-[10px] flex items-center justify-center text-[#1E2233]/50"
+                >
+                  {i + 1}
+                </span>
+                {opt.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stage1Typing({ onFinish, roundLen, beep, soundOn, onToggleSound }) {
+  const { idx, setIdx, score, streak, history, mistakes, record } = useRound(roundLen, beep);
+  const [country] = useState(() => shuffle(COUNTRIES).slice(0, roundLen));
+  const [value, setValue] = useState("");
+  const [stamp, setStamp] = useState(null);
+  const [reveal, setReveal] = useState(false);
+
+  const current = country[idx];
+
+  const submit = () => {
+    if (reveal) return;
+    const ok = isCorrectAnswer(value, current);
+    setStamp(ok ? "ok" : "bad");
+    setReveal(true);
+    record(ok, current);
+    setTimeout(() => {
+      setStamp(null);
+      setReveal(false);
+      setValue("");
+      if (idx + 1 < roundLen) setIdx((i) => i + 1);
+      else onFinish(score + (ok ? 1 : 0), [...mistakes, ...(ok ? [] : [current])]);
+    }, 1050);
+  };
+
+  return (
+    <div className="relative">
+      <Stamp ok={stamp === "ok"} show={!!stamp} />
+      <TopBar onHome={() => onFinish(null)} history={history} total={roundLen} score={score} streak={streak} soundOn={soundOn} onToggleSound={onToggleSound} />
+      <div className="flex flex-col items-center gap-6">
+        <div className="text-8xl drop-shadow-lg select-none">{current.flag}</div>
+        <p className="text-[#1E2233]/60 text-sm" style={{ fontFamily: FONT }}>
+          اكتب اسم الدولة
+        </p>
+        <div className="w-full max-w-sm flex flex-col gap-3" dir="rtl">
+          <input
+            autoFocus
+            value={value}
+            disabled={reveal}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="اسم الدولة..."
+            className="rounded-xl bg-black/5 border-2 border-black/10 focus:border-[#A9861E] outline-none px-4 py-3 text-lg text-[#1E2233] text-center"
+            style={{ fontFamily: FONT }}
+          />
+          {reveal && (
+            <div
+              className={`text-center text-sm ${stamp === "ok" ? "text-emerald-300" : "text-rose-300"}`}
+              style={{ fontFamily: FONT }}
+            >
+              الإجابة: {current.name}
+            </div>
+          )}
+          <button
+            onClick={submit}
+            disabled={reveal}
+            className="rounded-xl font-bold py-3 hover:opacity-90 disabled:opacity-40 transition-opacity"
+            style={{ fontFamily: FONT, backgroundColor: C.seal, color: C.cream }}
+          >
+            تأكيد
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Stage 2: Name + Flag + Location ---------------- */
+
+function Stage2MultipleChoice({ onFinish, roundLen, beep, soundOn, onToggleSound }) {
+  const { idx, setIdx, score, streak, history, mistakes, record } = useRound(roundLen, beep);
+  const [country] = useState(() => shuffle(COUNTRIES).slice(0, roundLen));
+  const [dots, setDots] = useState(() => buildDots(country[0]));
+  const [chosen, setChosen] = useState(null);
+  const [stamp, setStamp] = useState(null);
+
+  function buildDots(c) {
+    return shuffle([c, ...pick(4, c.code)]);
+  }
+
+  const current = country[idx];
+
+  const handlePick = useCallback(
+    (opt) => {
+      if (chosen) return;
+      const ok = opt.code === current.code;
+      setChosen(opt.code);
+      setStamp(ok ? "ok" : "bad");
+      record(ok, current);
+      setTimeout(() => {
+        setStamp(null);
+        setChosen(null);
+        if (idx + 1 < roundLen) {
+          setIdx((i) => i + 1);
+          setDots(buildDots(country[idx + 1]));
+        } else {
+          onFinish(score + (ok ? 1 : 0), [...mistakes, ...(ok ? [] : [current])]);
+        }
+      }, 850);
+    },
+    [chosen, current, idx, roundLen, score, mistakes, record, onFinish, country]
+  );
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= dots.length) handlePick(dots[n - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dots, handlePick]);
+
+  return (
+    <div className="relative">
+      <Stamp ok={stamp === "ok"} show={!!stamp} />
+      <TopBar onHome={() => onFinish(null)} history={history} total={roundLen} score={score} streak={streak} soundOn={soundOn} onToggleSound={onToggleSound} />
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-5xl">{current.flag}</span>
+          <span className="text-2xl font-bold text-[#1E2233]" style={{ fontFamily: FONT }}>
+            {current.name}
+          </span>
+        </div>
+        <p className="text-[#1E2233]/60 text-sm" style={{ fontFamily: FONT }}>
+          دوس على مكانها على الخريطة
+        </p>
+        <div className="relative w-full max-w-2xl rounded-xl overflow-hidden border border-black/10" style={{ backgroundColor: C.panel }}>
+          <img src={WORLD_MAP_IMG} alt="" className="w-full h-auto opacity-80 select-none" draggable={false} />
+          {dots.map((d, i) => {
+            const { x, y } = toXY(d.lat, d.lng);
+            const isChosen = chosen === d.code;
+            const isRight = chosen && d.code === current.code;
+            return (
+              <button
+                key={d.code}
+                onClick={() => handlePick(d)}
+                disabled={!!chosen}
+                aria-label={`خيار ${i + 1}`}
+                style={{ left: `${x}%`, top: `${y}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                  ${
+                    isRight
+                      ? "bg-emerald-400 border-emerald-100 text-emerald-900 scale-150 z-10"
+                      : isChosen
+                      ? "bg-rose-500 border-rose-100 text-rose-950 scale-150 z-10"
+                      : "border-white/70 hover:scale-125 text-[#12141C]"
+                  }`}
+              >
+                <span style={{ backgroundColor: isChosen || isRight ? "transparent" : C.brass, position: "absolute", inset: 0, borderRadius: "9999px", zIndex: -1 }} />
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stage2Typing({ onFinish, roundLen, beep, soundOn, onToggleSound }) {
+  const { idx, setIdx, score, streak, history, mistakes, record } = useRound(roundLen, beep);
+  const [country] = useState(() => shuffle(COUNTRIES).slice(0, roundLen));
+  const [value, setValue] = useState("");
+  const [stamp, setStamp] = useState(null);
+  const [reveal, setReveal] = useState(false);
+
+  const current = country[idx];
+  const { x, y } = toXY(current.lat, current.lng);
+
+  const submit = () => {
+    if (reveal) return;
+    const ok = isCorrectAnswer(value, current);
+    setStamp(ok ? "ok" : "bad");
+    setReveal(true);
+    record(ok, current);
+    setTimeout(() => {
+      setStamp(null);
+      setReveal(false);
+      setValue("");
+      if (idx + 1 < roundLen) setIdx((i) => i + 1);
+      else onFinish(score + (ok ? 1 : 0), [...mistakes, ...(ok ? [] : [current])]);
+    }, 1050);
+  };
+
+  return (
+    <div className="relative">
+      <Stamp ok={stamp === "ok"} show={!!stamp} />
+      <TopBar onHome={() => onFinish(null)} history={history} total={roundLen} score={score} streak={streak} soundOn={soundOn} onToggleSound={onToggleSound} />
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-[#1E2233]/60 text-sm" style={{ fontFamily: FONT }}>
+          دي علامة مكان أنهي دولة؟
+        </p>
+        <div className="relative w-full max-w-2xl rounded-xl overflow-hidden border border-black/10" style={{ backgroundColor: C.panel }}>
+          <img src={WORLD_MAP_IMG} alt="" className="w-full h-auto opacity-80 select-none" draggable={false} />
+          <div
+            style={{ left: `${x}%`, top: `${y}%`, backgroundColor: C.brass }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white animate-pulse"
+          />
+        </div>
+        <div className="w-full max-w-sm flex flex-col gap-3" dir="rtl">
+          <input
+            autoFocus
+            value={value}
+            disabled={reveal}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="اسم الدولة..."
+            className="rounded-xl bg-black/5 border-2 border-black/10 focus:border-[#A9861E] outline-none px-4 py-3 text-lg text-[#1E2233] text-center"
+            style={{ fontFamily: FONT }}
+          />
+          {reveal && (
+            <div
+              className={`text-center text-sm flex items-center justify-center gap-2 ${stamp === "ok" ? "text-emerald-300" : "text-rose-300"}`}
+              style={{ fontFamily: FONT }}
+            >
+              <span>{current.flag}</span> الإجابة: {current.name}
+            </div>
+          )}
+          <button
+            onClick={submit}
+            disabled={reveal}
+            className="rounded-xl font-bold py-3 hover:opacity-90 disabled:opacity-40 transition-opacity"
+            style={{ fontFamily: FONT, backgroundColor: C.seal, color: C.cream }}
+          >
+            تأكيد
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Result screen ---------------- */
+
+function ResultScreen({ score, roundLen, mistakes, onHome, onRetry }) {
+  const pct = Math.round((score / roundLen) * 100);
+  const msg =
+    pct >= 90 ? "سفير فخري! 🌍" : pct >= 70 ? "ممتاز جدًا!" : pct >= 40 ? "مش بطال، كمّل تدرب" : "ابدأ من الأول وهتتحسن";
+  return (
+    <div className="flex flex-col items-center gap-6 py-6" dir="rtl">
+      <div
+        className="rounded-full border-[6px] w-40 h-40 flex flex-col items-center justify-center rotate-[-6deg]"
+        style={{ borderColor: C.brass, fontFamily: FONT }}
+      >
+        <span className="text-4xl font-black" style={{ color: C.brass }}>
+          {score}/{roundLen}
+        </span>
+        <span className="text-xs" style={{ color: C.brass + "cc" }}>
+          {pct}%
+        </span>
+      </div>
+      <p className="text-xl font-bold text-[#1E2233]" style={{ fontFamily: FONT }}>
+        {msg}
+      </p>
+
+      {mistakes.length > 0 && (
+        <div className="w-full max-w-md">
+          <p className="text-xs text-[#1E2233]/50 mb-2 text-center" style={{ fontFamily: FONT }}>
+            راجع اللي غلطت فيه
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {mistakes.map((m, i) => (
+              <span
+                key={m.code + i}
+                className="flex items-center gap-1.5 rounded-full bg-black/5 border border-black/10 px-3 py-1.5 text-sm text-[#1E2233]/80"
+                style={{ fontFamily: FONT }}
+              >
+                <span>{m.flag}</span> {m.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={onRetry}
+          className="flex items-center gap-2 rounded-xl font-bold px-5 py-3 hover:opacity-90 transition-opacity"
+          style={{ fontFamily: FONT, backgroundColor: C.seal, color: C.cream }}
+        >
+          <RotateCcw size={18} /> إعادة المحاولة
+        </button>
+        <button
+          onClick={onHome}
+          className="flex items-center gap-2 rounded-xl bg-black/5 text-[#1E2233] font-bold px-5 py-3 hover:bg-black/10"
+          style={{ fontFamily: FONT }}
+        >
+          <Home size={18} /> الرئيسية
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Home ---------------- */
+
+function ModeCard({ icon: Icon, title, desc, onClick, accent, best }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-right rounded-2xl border border-black/10 bg-black/5 hover:bg-black/5 transition-all p-5 flex items-start gap-4 w-full focus-visible:outline-none focus-visible:ring-2"
+      style={{ "--tw-ring-color": accent }}
+      dir="rtl"
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = accent + "80")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+    >
+      <div
+        className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center"
+        style={{ backgroundColor: accent + "22", color: accent }}
+      >
+        <Icon size={22} />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <div className="font-bold text-[#1E2233]" style={{ fontFamily: FONT }}>
+            {title}
+          </div>
+          {best != null && (
+            <span className="text-[11px] font-bold" style={{ color: accent }}>
+              أفضل نتيجة: {best}
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-[#1E2233]/50 mt-0.5" style={{ fontFamily: FONT }}>
+          {desc}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function Home_({ onStart, roundLen, setRoundLen, bests }) {
+  return (
+    <div className="flex flex-col gap-7" dir="rtl">
+      <div className="flex flex-col items-center text-center gap-2 mb-1">
+        <div className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-2" style={{ borderColor: C.brass, color: C.brass }}>
+          <Globe2 size={30} />
+        </div>
+        <h1 className="text-3xl font-black text-[#1E2233] tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>
+          أطلس العالم
+        </h1>
+        <p className="text-[#1E2233]/50 text-sm" style={{ fontFamily: FONT }}>
+          احفظ أعلام و أسماء ومواقع {COUNTRIES.length} دولة
+        </p>
+      </div>
+
+      <div className="flex items-center justify-center gap-2" dir="rtl">
+        <span className="text-xs text-[#1E2233]/40" style={{ fontFamily: FONT }}>
+          عدد الأسئلة
+        </span>
+        {[5, 10, 20].map((n) => (
+          <button
+            key={n}
+            onClick={() => setRoundLen(n)}
+            className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A9861E] ${
+              roundLen === n ? "text-[#12141C]" : "text-[#1E2233]/60 border-black/15 hover:border-black/30"
+            }`}
+            style={roundLen === n ? { backgroundColor: C.brass, borderColor: C.brass } : {}}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-xs font-bold px-1" style={{ fontFamily: FONT, color: C.brass }}>
+          <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: C.brass + "22" }}>
+            ١
+          </span>
+          المرحلة الأولى — الاسم والعلم
+        </div>
+        <ModeCard icon={ListChecks} title="اختيار من متعدد" desc="شوف العلم واختار اسم الدولة الصح" accent={C.brass} best={bests.s1mc} onClick={() => onStart("s1mc")} />
+        <ModeCard icon={Type} title="اكتب الاسم" desc="شوف العلم واكتب اسم الدولة بنفسك" accent={C.brass} best={bests.s1type} onClick={() => onStart("s1type")} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-xs font-bold px-1" style={{ fontFamily: FONT, color: C.teal }}>
+          <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: C.teal + "22" }}>
+            ٢
+          </span>
+          المرحلة الثانية — الاسم والعلم والموقع
+        </div>
+        <ModeCard icon={MapPin} title="اختيار من الخريطة" desc="شوف الاسم والعلم ودوس على مكان الدولة صح" accent={C.teal} best={bests.s2mc} onClick={() => onStart("s2mc")} />
+        <ModeCard icon={Type} title="اكتب الاسم من الموقع" desc="شوف نقطة على الخريطة واكتب اسم الدولة" accent={C.teal} best={bests.s2type} onClick={() => onStart("s2type")} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Root ---------------- */
+
+export default function App() {
+  const [mode, setMode] = useState("home");
+  const [lastScore, setLastScore] = useState(0);
+  const [lastMistakes, setLastMistakes] = useState([]);
+  const [lastMode, setLastMode] = useState("s1mc");
+  const [roundLen, setRoundLen] = useState(10);
+  const [bests, setBests] = useState({ s1mc: null, s1type: null, s2mc: null, s2type: null });
+  const { on: soundOn, setOn: setSoundOn, beep } = useBeep();
+
+  const finish = useCallback(
+    (score, mistakes) => {
+      if (score === null) {
+        setMode("home");
+        return;
+      }
+      setLastScore(score);
+      setLastMistakes(mistakes || []);
+      setBests((b) => ({ ...b, [lastMode]: b[lastMode] == null ? score : Math.max(b[lastMode], score) }));
+      setMode("result");
+    },
+    [lastMode]
+  );
+
+  const start = (m) => {
+    setLastMode(m);
+    setMode(m);
+  };
+
+  const stageProps = { onFinish: finish, roundLen, beep, soundOn, onToggleSound: () => setSoundOn((s) => !s) };
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ backgroundColor: C.bg }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Playfair+Display:wght@700;900&display=swap');
+        @keyframes stampIn {
+          0% { opacity: 0; transform: scale(2) rotate(-8deg); }
+          60% { opacity: 1; transform: scale(0.95) rotate(-8deg); }
+          100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+        }
+      `}</style>
+      <div className="w-full max-w-2xl rounded-3xl p-6 sm:p-8 border border-black/5 shadow-sm" style={{ backgroundColor: C.surface }}>
+        {mode === "home" && <Home_ onStart={start} roundLen={roundLen} setRoundLen={setRoundLen} bests={bests} />}
+        {mode === "s1mc" && <Stage1MultipleChoice {...stageProps} />}
+        {mode === "s1type" && <Stage1Typing {...stageProps} />}
+        {mode === "s2mc" && <Stage2MultipleChoice {...stageProps} />}
+        {mode === "s2type" && <Stage2Typing {...stageProps} />}
+        {mode === "result" && (
+          <ResultScreen score={lastScore} roundLen={roundLen} mistakes={lastMistakes} onHome={() => setMode("home")} onRetry={() => setMode(lastMode)} />
+        )}
+      </div>
+    </div>
+  );
+}
