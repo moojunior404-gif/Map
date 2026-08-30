@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>إضافة منيو الفطاير الكامل — مرة واحدة بس</title>
+<title>إضافة منيو البيتزا الكامل — مرة واحدة بس</title>
 <style>
   body{font-family:sans-serif;max-width:480px;margin:40px auto;padding:0 16px;line-height:1.7}
   button{padding:14px 20px;font-size:15px;border:none;border-radius:10px;background:#1f7a4d;color:#fff;cursor:pointer;width:100%;margin-top:10px}
@@ -11,10 +11,10 @@
 </style>
 </head>
 <body>
-  <h2>إضافة منيو الفطاير الكامل (مرة واحدة)</h2>
+  <h2>إضافة منيو البيتزا الكامل (مرة واحدة)</h2>
   <p>
-    الصفحة دي بتدور على قسم "الفطير المشلتت" (اللي بيفتح صورة دلوقتي)، وبتحوّله لقسم أصناف عادي فيه 5 أقسام فرعية،
-    وبتضيف الـ 35 صنف فطيرة اللي بعتهملك جوا الأقسام دي. تشغلها مرة واحدة بس.
+    الصفحة دي بتدور على قسم "بيتزا" (اللي بيفتح صورة دلوقتي)، وبتحوّله لقسم أصناف عادي فيه 8 أقسام فرعية،
+    وبتضيف الـ 28 صنف بيتزا اللي بعتهملك جوا الأقسام دي. تشغلها مرة واحدة بس.
   </p>
   <label>الإيميل</label><input id="email" type="email" placeholder="admin@example.com"/>
   <label>الباسورد</label><input id="password" type="password"/>
@@ -46,57 +46,56 @@ const log = (msg) => { logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.
 const IMG_BASE = "https://raw.githubusercontent.com/anwarlebanonbakery/bakery-images/main/";
 const img = (name) => IMG_BASE + name;
 
-// ── الأقسام الفرعية الخمسة ──
+// ── الأقسام الفرعية الثمانية ──
 const SECTIONS = [
-  { id: 'sada',   name: 'الفطاير السادة والحلوة' },
-  { id: 'ajban',  name: 'فطاير الأجبان' },
-  { id: 'lohoum', name: 'فطاير اللحوم' },
-  { id: 'dajaj',  name: 'فطاير الدجاج' },
-  { id: 'asmak',  name: 'فطاير الأسماك' },
+  { id: 'cheese',  name: 'بيتزا الجبنة' },
+  { id: 'meat',    name: 'بيتزا اللحوم' },
+  { id: 'chicken', name: 'بيتزا الدجاج' },
+  { id: 'sausage', name: 'بيتزا السجق واللحوم الباردة' },
+  { id: 'seafood', name: 'بيتزا السي فود' },
+  { id: 'veg',     name: 'بيتزا الخضار' },
+  { id: 'special', name: 'بيتزا مميزة ومشكلة' },
+  { id: 'sweet',   name: 'بيتزا حلوة' },
 ];
 
-// ── الـ 35 صنف، كل واحد بقسمه الفرعي وسعر الوسط والكبير ──
+// ── الـ 28 صنف، كل واحد بقسمه الفرعي وسعر الوسط والكبير ──
 const ITEMS = [
-  // 🥐 الفطاير السادة والحلوة
-  { sec: 'sada', name: 'فطير سادة',              img: 'IMG-20260829-WA0032.jpg', mid: 25, big: 40 },
-  { sec: 'sada', name: 'فطير لوتس',               img: 'IMG-20260829-WA0038.jpg', mid: 25, big: 50 },
-  { sec: 'sada', name: 'فطير لوتس + موز',          img: 'IMG-20260829-WA0044.jpg', mid: 30, big: 60 },
-  { sec: 'sada', name: 'فطير لوتس + مكسرات',       img: 'IMG-20260829-WA0067.jpg', mid: 30, big: 60 },
-  { sec: 'sada', name: 'فطير مربى',               img: 'IMG-20260829-WA0066.jpg', mid: 20, big: 40 },
-  { sec: 'sada', name: 'فطير مربى + قشطة',         img: 'IMG-20260829-WA0064.jpg', mid: 25, big: 50 },
-  // 🧀 فطاير الأجبان
-  { sec: 'ajban', name: 'فطير جبنة فيتا',          img: 'IMG-20260829-WA0049.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة رومي',          img: 'IMG-20260829-WA0039.jpg', mid: 25, big: 45 },
-  { sec: 'ajban', name: 'فطير جبنة كرافت',         img: 'IMG-20260829-WA0060.jpg', mid: 17.5, big: 35 },
-  { sec: 'ajban', name: 'فطير جبنة + زيتون',       img: 'IMG-20260829-WA0031.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة + فلفل',        img: 'IMG-20260829-WA0046.jpg', mid: 25, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة + مشروم',       img: 'IMG-20260829-WA0055.jpg', mid: 25, big: 40 },
-  { sec: 'ajban', name: 'فطير زعتر + جبنة',        img: 'IMG-20260829-WA0061.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير مكس أجبان',          img: 'IMG-20260829-WA0054.jpg', mid: 25, big: 50 },
-  { sec: 'ajban', name: 'فطير لبنة + فلافل',       img: 'IMG-20260829-WA0040.jpg', mid: 25, big: 40 },
-  // 🥩 فطاير اللحوم
-  { sec: 'lohoum', name: 'فطير لحمة مفرومة',        img: 'IMG-20260829-WA0041.jpg', mid: 25, big: 40 },
-  { sec: 'lohoum', name: 'فطير لحمة + جبنة',        img: 'IMG-20260829-WA0050.jpg', mid: 30, big: 50 },
-  { sec: 'lohoum', name: 'فطير لحم + فلفل + بصل',   img: 'IMG-20260829-WA0057.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير شاورما لحم',         img: 'IMG-20260829-WA0063.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير شاورما لحم + جبنة',  img: 'IMG-20260829-WA0034.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير بسطرمة + جبنة',      img: 'IMG-20260829-WA0035.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير سجق',                img: 'IMG-20260829-WA0047.jpg', mid: 25, big: 40 },
-  { sec: 'lohoum', name: 'فطير سجق + جبنة',         img: 'IMG-20260829-WA0056.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير نقانق + جبنة',       img: 'IMG-20260829-WA0062.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير مكس لحوم',           img: 'IMG-20260829-WA0065.jpg', mid: 35, big: 60 },
-  { sec: 'lohoum', name: 'فطير أجبان ولحوم (مكس)',  img: 'IMG-20260829-WA0043.jpg', mid: 35, big: 60 },
-  // 🍗 فطاير الدجاج
-  { sec: 'dajaj', name: 'فطير دجاج',                img: 'IMG-20260829-WA0042.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير دجاج + جبنة',         img: 'IMG-20260829-WA0051.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير شاورما دجاج',         img: 'IMG-20260829-WA0058.jpg', mid: 30, big: 50 },
-  { sec: 'dajaj', name: 'فطير شاورما دجاج + جبنة',  img: 'IMG-20260829-WA0068.jpg', mid: 25, big: 50 },
-  { sec: 'dajaj', name: 'فطير دجاج + مشروم + جبنة', img: 'IMG-20260829-WA0036.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير مكس فراخ ولحوم',      img: 'IMG-20260829-WA0037.jpg', mid: 35, big: 60 },
-  // 🐟 فطاير الأسماك
-  { sec: 'asmak', name: 'فطير تونة',                img: 'IMG-20260829-WA0045.jpg', mid: 30, big: 55 },
-  { sec: 'asmak', name: 'فطير تونة + جبنة',         img: 'IMG-20260829-WA0053.jpg', mid: 35, big: 60 },
-  { sec: 'asmak', name: 'فطير تونة + زيتون',        img: 'IMG-20260829-WA0059.jpg', mid: 35, big: 60 },
+  // 🧀 بيتزا الجبنة
+  { sec: 'cheese', name: 'ميكس جبنة',                 img: 'IMG-20260829-WA0001.jpg', mid: 25, big: 50 },
+  { sec: 'cheese', name: 'جبنة كيري',                  img: 'IMG-20260829-WA0010.jpg', mid: 25, big: 50 },
+  // 🥩 بيتزا اللحوم
+  { sec: 'meat', name: 'لحم مفروم',                    img: 'IMG-20260829-WA0008.jpg', mid: 30, big: 55 },
+  { sec: 'meat', name: 'لحم مفروم مع جبنة كيري',        img: 'IMG-20260829-WA0020.jpg', mid: 30, big: 55 },
+  { sec: 'meat', name: 'لحم وخضار',                    img: 'IMG-20260829-WA0014.jpg', mid: 30, big: 55 },
+  { sec: 'meat', name: 'لحم مع جبنة كيري',              img: 'IMG-20260829-WA0022.jpg', mid: 30, big: 55 },
+  { sec: 'meat', name: 'لحم مدخن مع جبنة كيري',         img: 'IMG-20260829-WA0009.jpg', mid: 30, big: 50 },
+  { sec: 'meat', name: 'شاورما لحم',                   img: 'IMG-20260829-WA0021.jpg', mid: 40, big: 65 },
+  { sec: 'meat', name: 'فاهيتا لحم',                   img: 'IMG-20260829-WA0013.jpg', mid: 40, big: 65 },
+  { sec: 'meat', name: 'التحدي (شاورما لحم + مشروم)',  img: 'IMG-20260829-WA0012.jpg', mid: 35, big: 55 },
+  // 🍗 بيتزا الدجاج
+  { sec: 'chicken', name: 'ناجتس دجاج',                img: 'IMG-20260829-WA0015.jpg', mid: 40, big: 60 },
+  { sec: 'chicken', name: 'فاهيتا دجاج',                img: 'IMG-20260829-WA0000.jpg', mid: 40, big: 60 },
+  { sec: 'chicken', name: 'شاورما دجاج',                img: 'IMG-20260829-WA0002.jpg', mid: 30, big: 50 },
+  // 🌭 بيتزا السجق واللحوم الباردة
+  { sec: 'sausage', name: 'سجق مع خضار',                img: 'IMG-20260829-WA0006.jpg', mid: 25, big: 50 },
+  { sec: 'sausage', name: 'سجق مع فلفل حار',            img: 'IMG-20260829-WA0011.jpg', mid: 25, big: 50 },
+  { sec: 'sausage', name: 'بسترمة مع خضار وزيتون',      img: 'IMG-20260829-WA0017.jpg', mid: 35, big: 60 },
+  { sec: 'sausage', name: 'بيبروني',                    img: 'IMG-20260829-WA0027.jpg', mid: 25, big: 55 },
+  { sec: 'sausage', name: 'مرتديلا',                    img: 'IMG-20260829-WA0007.jpg', mid: 35, big: 55 },
+  { sec: 'sausage', name: 'سجق مع جبنة كيري',           img: 'IMG-20260829-WA0023.jpg', mid: 30, big: 55 },
+  { sec: 'sausage', name: 'سجق مع جبنة رومي',           img: 'IMG-20260829-WA0025.jpg', mid: 25, big: 50 },
+  { sec: 'sausage', name: 'بسترمة مع سجق',              img: 'IMG-20260829-WA0026.jpg', mid: 30, big: 50 },
+  // 🦐 بيتزا السي فود
+  { sec: 'seafood', name: 'سي فود وربيان',              img: 'IMG-20260829-WA0005.jpg', mid: 30, big: 50 },
+  { sec: 'seafood', name: 'سي فود',                     img: 'IMG-20260829-WA0024.jpg', mid: 40, big: 65 },
+  // 🥦 بيتزا الخضار
+  { sec: 'veg', name: 'خضار مع هوت دوغ',                img: 'IMG-20260829-WA0004.jpg', mid: 25, big: 50 },
+  { sec: 'veg', name: 'خضار مشكل',                     img: 'IMG-20260829-WA0019.jpg', mid: 20, big: 40 },
+  // ⭐ بيتزا مميزة ومشكلة
+  { sec: 'special', name: 'المجموعة (4 نكهات)',         img: 'IMG-20260829-WA0018.jpg', mid: 40, big: 60 },
+  { sec: 'special', name: 'سوبر سوبريم',                img: 'IMG-20260829-WA0016.jpg', mid: 40, big: 65 },
+  // 🍯 بيتزا حلوة
+  { sec: 'sweet', name: 'عش البلبل (لبنة وعسل)',        img: 'IMG-20260829-WA0003.jpg', mid: 35, big: 55 },
 ];
 
 document.getElementById('runBtn').onclick = async () => {
@@ -110,46 +109,46 @@ document.getElementById('runBtn').onclick = async () => {
     return;
   }
 
-  // ── دور على قسم "الفطير المشلتت" ──
-  log("🔎 بدور على قسم الفطير المشلتت...");
+  // ── دور على قسم "بيتزا" ──
+  log("🔎 بدور على قسم البيتزا...");
   const catsSnap = await getDocs(collection(db, "categories"));
-  let mashaltetDoc = null;
+  let pizzaDoc = null;
   catsSnap.forEach(d => {
     const data = d.data();
-    if ((data.name || '').includes('مشلتت')) mashaltetDoc = { id: d.id, ...data };
+    if ((data.name || '').includes('بيتزا')) pizzaDoc = { id: d.id, ...data };
   });
 
-  if (!mashaltetDoc) {
-    log("❌ مالقتش قسم اسمه فيه 'مشلتت'. افتحي لوحة الأدمن وشوفي اسم القسم بالظبط، وابعتيهولي لو مختلف.");
+  if (!pizzaDoc) {
+    log("❌ مالقتش قسم اسمه فيه 'بيتزا'. افتحي لوحة الأدمن وشوفي اسم القسم بالظبط، وابعتيهولي لو مختلف.");
     return;
   }
-  log(`✅ لقيت القسم: "${mashaltetDoc.name}" (${mashaltetDoc.id})`);
+  log(`✅ لقيت القسم: "${pizzaDoc.name}" (${pizzaDoc.id})`);
 
   // ── تحقق إننا مش هنكرر الإضافة لو الصفحة اتشغلت قبل كده ──
-  const existingProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", mashaltetDoc.id)));
+  const existingProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", pizzaDoc.id)));
   if (existingProdsSnap.size > 0) {
-    log(`⚠️ القسم ده فيه بالفعل ${existingProdsSnap.size} صنف. لو كملتي هيتضاف الـ 35 صنف فوقهم (ممكن يبقوا مكررين).`);
-    if (!confirm(`القسم فيه ${existingProdsSnap.size} صنف بالفعل. متأكد عايز تكمل وتضيف الـ 35 صنف الجداد؟`)) {
+    log(`⚠️ القسم ده فيه بالفعل ${existingProdsSnap.size} صنف. لو كملتي هيتضاف الـ 28 صنف فوقهم (ممكن يبقوا مكررين).`);
+    if (!confirm(`القسم فيه ${existingProdsSnap.size} صنف بالفعل. متأكد عايز تكمل وتضيف الـ 28 صنف الجداد؟`)) {
       log("⏹ اتوقف بناءً على طلبك.");
       return;
     }
   }
 
   // ── حوّل القسم من نوع "صورة" لنوع "قسم أصناف" وضيف الأقسام الفرعية ──
-  await updateDoc(doc(db, "categories", mashaltetDoc.id), {
+  await updateDoc(doc(db, "categories", pizzaDoc.id), {
     displayType: 'category',
     menuImageUrl: '',
     sections: SECTIONS,
     updatedAt: serverTimestamp(),
   });
-  log("✅ اتحول القسم لقسم أصناف عادي وانضافله 5 أقسام فرعية");
+  log("✅ اتحول القسم لقسم أصناف عادي (اتشالت الصورة) وانضافله 8 أقسام فرعية");
 
-  // ── ضيف الأصناف الـ 35 ──
+  // ── ضيف الأصناف الـ 28 ──
   let order = existingProdsSnap.size;
   for (const it of ITEMS) {
     await addDoc(collection(db, "products"), {
       name: it.name,
-      categoryId: mashaltetDoc.id,
+      categoryId: pizzaDoc.id,
       sectionId: it.sec,
       imageUrl: img(it.img),
       sizePrices: [
@@ -171,7 +170,7 @@ document.getElementById('runBtn').onclick = async () => {
     log(`✅ ${it.name}`);
   }
 
-  log(`🎉 خلصنا! اتضاف ${ITEMS.length} صنف فطيرة في 5 أقسام فرعية. افتحي الموقع وجربي.`);
+  log(`🎉 خلصنا! اتضاف ${ITEMS.length} صنف بيتزا في 8 أقسام فرعية. افتحي الموقع وجربي.`);
 };
 </script>
 </body>
