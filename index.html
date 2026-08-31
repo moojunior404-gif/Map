@@ -2,20 +2,26 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>تجهيز قسم حلويات غربية (معرض صور) — مرة واحدة بس</title>
+<title>إضافة صور مواد غذائية — مرة واحدة بس</title>
 <style>
   body{font-family:sans-serif;max-width:480px;margin:40px auto;padding:0 16px;line-height:1.7}
   button{padding:14px 20px;font-size:15px;border:none;border-radius:10px;background:#1f7a4d;color:#fff;cursor:pointer;width:100%;margin-top:10px}
   input{width:100%;padding:10px;margin-top:6px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box}
   #log{white-space:pre-wrap;background:#f4f4f4;padding:12px;border-radius:8px;margin-top:16px;font-size:13px;max-height:400px;overflow:auto}
+  .warn{background:#fff4e0;border:1px solid #e0b060;padding:10px 12px;border-radius:8px;font-size:13.5px;margin-top:14px}
 </style>
 </head>
 <body>
-  <h2>تجهيز قسم "حلويات غربية" (معرض صور)</h2>
+  <h2>إضافة صور مواد غذائية (مرة واحدة)</h2>
   <p>
-    الصفحة دي بتدور على قسم اسمه فيه "حلويات غربية". لو لقته، بتمسح أي أصناف قديمة فيه، وبتحوّله
-    لوضع "معرض صور" (صور طولية بس، من غير اسم أو سعر). لو مالقتوش، بتعمله جديد. تشغلها مرة واحدة بس.
+    الصفحة دي بتدور على قسم "مواد غذائية" الموجود بالفعل، وبتضيف الصور اللي تحت جواه
+    كأصناف من غير أسامي (name فاضي)، بنفس ترتيبهم.
   </p>
+  <div class="warn">
+    ⚠️ متأكد بس من ١٥ اسم صورة من الـ ١٩ (٠٠٠٠ لحد ٠٠١٣ + ٠٠٢٦).
+    الأربعة البواقي حطتلهم أسامي مؤقتة (WA0014, WA0015, WA0016, WA0017) في نهاية الليستة تحت —
+    لازم تراجعيهم/تعدليهم بالأسامي الصح قبل ما تدوسي "ابدأ"، أو تمسحيهم لو مش موجودين.
+  </div>
   <label>الإيميل</label><input id="email" type="email" placeholder="admin@example.com"/>
   <label>الباسورد</label><input id="password" type="password"/>
   <button id="runBtn">سجل دخول وابدأ</button>
@@ -25,7 +31,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, updateDoc, deleteDoc, getDocs, doc, query, where, serverTimestamp
+  getFirestore, collection, addDoc, getDocs, doc, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // نفس إعدادات firebase-app.js بالظبط
@@ -43,38 +49,40 @@ const db = getFirestore(app);
 const logEl = document.getElementById('log');
 const log = (msg) => { logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.scrollHeight; };
 
-// نفس مستودع صور البيتزا والشوكولاتة بالظبط — عدّلي الاسم هنا لو مختلف
 const IMG_BASE = "https://raw.githubusercontent.com/anwarlebanonbakery/bakery-images/main/";
 const img = (name) => IMG_BASE + name;
 
-/* ══════════════════════════════════════
-   حطي هنا أسماء الصور اللي رفعتيها على المستودع
-   (بالترتيب اللي عايزة الصور تتعرض بيه في المعرض)
-══════════════════════════════════════ */
-const FILES = [
-  'IMG-20260830-WA0015.jpg',
-  'IMG-20260830-WA0016.jpg',
-  'IMG-20260830-WA0017.jpg',
-  'IMG-20260830-WA0018.jpg',
-  'IMG-20260830-WA0019.jpg',
-  'IMG-20260830-WA0043.jpg',
-  'IMG-20260830-WA0044.jpg',
-  'IMG-20260830-WA0045.jpg',
-  'IMG-20260830-WA0046.jpg',
-  'IMG-20260830-WA0047.jpg',
-  'IMG-20260830-WA0048.jpg',
-  'IMG-20260830-WA0049.jpg',
-  'IMG-20260830-WA0050.jpg',
-];
+// ── الاسم اللي هيدور عليه القسم (هيدور على أي قسم اسمه فيه "مواد غذائية") ──
+const CATEGORY_NAME_MATCH = 'مواد غذائية';
 
-const CATEGORY_NAME = 'حلويات غربية';
+// ── أسامي صور الـ 19 صنف، من غير أسامي منتجات ──
+// أول 15 مؤكدين من الصورة اللي بعتيها. آخر 4 مؤقتين — راجعيهم قبل التشغيل.
+const IMAGES = [
+  'IMG-20260831-WA0000.jpg',
+  'IMG-20260831-WA0001.jpg',
+  'IMG-20260831-WA0002.jpg',
+  'IMG-20260831-WA0003.jpg',
+  'IMG-20260831-WA0004.jpg',
+  'IMG-20260831-WA0005.jpg',
+  'IMG-20260831-WA0006.jpg',
+  'IMG-20260831-WA0007.jpg',
+  'IMG-20260831-WA0008.jpg',
+  'IMG-20260831-WA0009.jpg',
+  'IMG-20260831-WA0010.jpg',
+  'IMG-20260831-WA0011.jpg',
+  'IMG-20260831-WA0012.jpg',
+  'IMG-20260831-WA0013.jpg',
+  'IMG-20260831-WA0026.jpg',
+  // ⚠️ الأسامي الأربعة دي مؤقتة ومش مؤكدة — راجعيها أو امسحيها
+  'IMG-20260831-WA0014.jpg',
+  'IMG-20260831-WA0015.jpg',
+  'IMG-20260831-WA0016.jpg',
+  'IMG-20260831-WA0017.jpg',
+];
 
 document.getElementById('runBtn').onclick = async () => {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-
-  if (!FILES.length) { log("⚠️ لسه محطتش أسماء الصور في مصفوفة FILES جوا الكود — ابعتيهملي وأضيفهملك."); return; }
-
   try {
     await signInWithEmailAndPassword(auth, email, password);
     log("✅ تم تسجيل الدخول");
@@ -83,59 +91,55 @@ document.getElementById('runBtn').onclick = async () => {
     return;
   }
 
-  log(`🔎 بدور على قسم "${CATEGORY_NAME}"...`);
+  // ── دور على قسم "مواد غذائية" ──
+  log("🔎 بدور على قسم مواد غذائية...");
   const catsSnap = await getDocs(collection(db, "categories"));
   let catDoc = null;
   catsSnap.forEach(d => {
     const data = d.data();
-    if ((data.name || '').includes('حلويات غربية')) catDoc = { id: d.id, ...data };
+    if ((data.name || '').includes(CATEGORY_NAME_MATCH)) catDoc = { id: d.id, ...data };
   });
 
-  const galleryImages = FILES.map(img);
+  if (!catDoc) {
+    log("❌ مالقتش قسم اسمه فيه 'مواد غذائية'. افتحي لوحة الأدمن وشوفي اسم القسم بالظبط، وابعتيهولي لو مختلف.");
+    return;
+  }
+  log(`✅ لقيت القسم: "${catDoc.name}" (${catDoc.id})`);
 
-  if (catDoc) {
-    log(`✅ لقيت القسم: "${catDoc.name}" (${catDoc.id})`);
-
-    // ── امسح أي أصناف (منتجات) قديمة تابعة للقسم ده ──
-    const oldProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", catDoc.id)));
-    if (oldProdsSnap.size > 0) {
-      if (!confirm(`القسم فيه ${oldProdsSnap.size} صنف قديم. متأكد عايز تمسحهم كلهم؟`)) {
-        log("⏹ اتوقف بناءً على طلبك.");
-        return;
-      }
-      for (const d of oldProdsSnap.docs) await deleteDoc(doc(db, "products", d.id));
-      log(`🗑 اتمسح ${oldProdsSnap.size} صنف قديم`);
+  // ── تحقق إننا مش هنكرر الإضافة لو الصفحة اتشغلت قبل كده ──
+  const existingProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", catDoc.id)));
+  if (existingProdsSnap.size > 0) {
+    log(`⚠️ القسم ده فيه بالفعل ${existingProdsSnap.size} صنف.`);
+    if (!confirm(`القسم فيه ${existingProdsSnap.size} صنف بالفعل. متأكد عايز تكمل وتضيف الـ ${IMAGES.length} صورة الجداد؟`)) {
+      log("⏹ اتوقف بناءً على طلبك.");
+      return;
     }
+  }
 
-    // ── حوّل القسم لوضع "معرض صور" ──
-    await updateDoc(doc(db, "categories", catDoc.id), {
-      displayType: 'gallery',
-      galleryImages,
-      imageUrl: galleryImages[0] || catDoc.imageUrl,
-      sections: [],
-      updatedAt: serverTimestamp(),
-    });
-    log(`✅ اتحول القسم لوضع "معرض صور" فيه ${galleryImages.length} صورة`);
-  } else {
-    log(`ℹ️ مالقتش قسم اسمه فيه "${CATEGORY_NAME}" — هعمله جديد.`);
-    await addDoc(collection(db, "categories"), {
-      name: CATEGORY_NAME,
-      displayType: 'gallery',
-      galleryImages,
-      imageUrl: galleryImages[0] || '',
-      menuImageUrl: '',
-      sections: [],
-      tag: '',
-      emoji: '',
+  // ── ضيف الصور كأصناف من غير اسم ──
+  let order = existingProdsSnap.size;
+  for (const fileName of IMAGES) {
+    await addDoc(collection(db, "products"), {
+      name: '',
+      categoryId: catDoc.id,
+      imageUrl: img(fileName),
+      price: null,
+      description: '',
+      flavors: [],
+      sizes: [],
+      sizePrices: [],
+      manaeshTypes: [],
+      wide: false,
+      tall: false,
+      displayOrder: order++,
       visible: true,
-      displayOrder: 999,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    log(`✅ اتعمل قسم جديد "${CATEGORY_NAME}" في وضع "معرض صور" فيه ${galleryImages.length} صورة`);
+    log(`✅ ${fileName}`);
   }
 
-  log("🎉 خلصنا! افتحي الموقع وجربي.");
+  log(`🎉 خلصنا! اتضاف ${IMAGES.length} صورة في قسم "${catDoc.name}".`);
 };
 </script>
 </body>
