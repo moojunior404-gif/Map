@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>إضافة منيو الفطاير الكامل — مرة واحدة بس</title>
+<title>إضافة صور الشوكولاتة — مرة واحدة بس</title>
 <style>
   body{font-family:sans-serif;max-width:480px;margin:40px auto;padding:0 16px;line-height:1.7}
   button{padding:14px 20px;font-size:15px;border:none;border-radius:10px;background:#1f7a4d;color:#fff;cursor:pointer;width:100%;margin-top:10px}
@@ -11,10 +11,10 @@
 </style>
 </head>
 <body>
-  <h2>إضافة منيو الفطاير الكامل (مرة واحدة)</h2>
+  <h2>إضافة صور الشوكولاتة (مرة واحدة)</h2>
   <p>
-    الصفحة دي بتدور على قسم "الفطير المشلتت" (اللي بيفتح صورة دلوقتي)، وبتحوّله لقسم أصناف عادي فيه 5 أقسام فرعية،
-    وبتضيف الـ 35 صنف فطيرة اللي بعتهملك جوا الأقسام دي. تشغلها مرة واحدة بس.
+    الصفحة دي بتدور على قسم "شوكولاتة"، وبتضيف الـ 14 صورة اللي رفعتيهم على مستودع bakery-images
+    كأصناف "صورة بس" (من غير اسم أو سعر ظاهر للعميل). تشغلها مرة واحدة بس.
   </p>
   <label>الإيميل</label><input id="email" type="email" placeholder="admin@example.com"/>
   <label>الباسورد</label><input id="password" type="password"/>
@@ -25,7 +25,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, where, serverTimestamp
+  getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // نفس إعدادات firebase-app.js بالظبط
@@ -43,60 +43,26 @@ const db = getFirestore(app);
 const logEl = document.getElementById('log');
 const log = (msg) => { logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.scrollHeight; };
 
+// نفس مستودع صور البيتزا بالظبط — عدّلي الاسم هنا لو مختلف
 const IMG_BASE = "https://raw.githubusercontent.com/anwarlebanonbakery/bakery-images/main/";
 const img = (name) => IMG_BASE + name;
 
-// ── الأقسام الفرعية الخمسة ──
-const SECTIONS = [
-  { id: 'sada',   name: 'الفطاير السادة والحلوة' },
-  { id: 'ajban',  name: 'فطاير الأجبان' },
-  { id: 'lohoum', name: 'فطاير اللحوم' },
-  { id: 'dajaj',  name: 'فطاير الدجاج' },
-  { id: 'asmak',  name: 'فطاير الأسماك' },
-];
-
-// ── الـ 35 صنف، كل واحد بقسمه الفرعي وسعر الوسط والكبير ──
-const ITEMS = [
-  // 🥐 الفطاير السادة والحلوة
-  { sec: 'sada', name: 'فطير سادة',              img: 'IMG-20260829-WA0032.jpg', mid: 25, big: 40 },
-  { sec: 'sada', name: 'فطير لوتس',               img: 'IMG-20260829-WA0038.jpg', mid: 25, big: 50 },
-  { sec: 'sada', name: 'فطير لوتس + موز',          img: 'IMG-20260829-WA0044.jpg', mid: 30, big: 60 },
-  { sec: 'sada', name: 'فطير لوتس + مكسرات',       img: 'IMG-20260829-WA0067.jpg', mid: 30, big: 60 },
-  { sec: 'sada', name: 'فطير مربى',               img: 'IMG-20260829-WA0066.jpg', mid: 20, big: 40 },
-  { sec: 'sada', name: 'فطير مربى + قشطة',         img: 'IMG-20260829-WA0064.jpg', mid: 25, big: 50 },
-  // 🧀 فطاير الأجبان
-  { sec: 'ajban', name: 'فطير جبنة فيتا',          img: 'IMG-20260829-WA0049.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة رومي',          img: 'IMG-20260829-WA0039.jpg', mid: 25, big: 45 },
-  { sec: 'ajban', name: 'فطير جبنة كرافت',         img: 'IMG-20260829-WA0060.jpg', mid: 17.5, big: 35 },
-  { sec: 'ajban', name: 'فطير جبنة + زيتون',       img: 'IMG-20260829-WA0031.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة + فلفل',        img: 'IMG-20260829-WA0046.jpg', mid: 25, big: 40 },
-  { sec: 'ajban', name: 'فطير جبنة + مشروم',       img: 'IMG-20260829-WA0055.jpg', mid: 25, big: 40 },
-  { sec: 'ajban', name: 'فطير زعتر + جبنة',        img: 'IMG-20260829-WA0061.jpg', mid: 20, big: 40 },
-  { sec: 'ajban', name: 'فطير مكس أجبان',          img: 'IMG-20260829-WA0054.jpg', mid: 25, big: 50 },
-  { sec: 'ajban', name: 'فطير لبنة + فلافل',       img: 'IMG-20260829-WA0040.jpg', mid: 25, big: 40 },
-  // 🥩 فطاير اللحوم
-  { sec: 'lohoum', name: 'فطير لحمة مفرومة',        img: 'IMG-20260829-WA0041.jpg', mid: 25, big: 40 },
-  { sec: 'lohoum', name: 'فطير لحمة + جبنة',        img: 'IMG-20260829-WA0050.jpg', mid: 30, big: 50 },
-  { sec: 'lohoum', name: 'فطير لحم + فلفل + بصل',   img: 'IMG-20260829-WA0057.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير شاورما لحم',         img: 'IMG-20260829-WA0063.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير شاورما لحم + جبنة',  img: 'IMG-20260829-WA0034.jpg', mid: 30, big: 55 },
-  { sec: 'lohoum', name: 'فطير بسطرمة + جبنة',      img: 'IMG-20260829-WA0035.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير سجق',                img: 'IMG-20260829-WA0047.jpg', mid: 25, big: 40 },
-  { sec: 'lohoum', name: 'فطير سجق + جبنة',         img: 'IMG-20260829-WA0056.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير نقانق + جبنة',       img: 'IMG-20260829-WA0062.jpg', mid: 25, big: 50 },
-  { sec: 'lohoum', name: 'فطير مكس لحوم',           img: 'IMG-20260829-WA0065.jpg', mid: 35, big: 60 },
-  { sec: 'lohoum', name: 'فطير أجبان ولحوم (مكس)',  img: 'IMG-20260829-WA0043.jpg', mid: 35, big: 60 },
-  // 🍗 فطاير الدجاج
-  { sec: 'dajaj', name: 'فطير دجاج',                img: 'IMG-20260829-WA0042.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير دجاج + جبنة',         img: 'IMG-20260829-WA0051.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير شاورما دجاج',         img: 'IMG-20260829-WA0058.jpg', mid: 30, big: 50 },
-  { sec: 'dajaj', name: 'فطير شاورما دجاج + جبنة',  img: 'IMG-20260829-WA0068.jpg', mid: 25, big: 50 },
-  { sec: 'dajaj', name: 'فطير دجاج + مشروم + جبنة', img: 'IMG-20260829-WA0036.jpg', mid: 35, big: 55 },
-  { sec: 'dajaj', name: 'فطير مكس فراخ ولحوم',      img: 'IMG-20260829-WA0037.jpg', mid: 35, big: 60 },
-  // 🐟 فطاير الأسماك
-  { sec: 'asmak', name: 'فطير تونة',                img: 'IMG-20260829-WA0045.jpg', mid: 30, big: 55 },
-  { sec: 'asmak', name: 'فطير تونة + جبنة',         img: 'IMG-20260829-WA0053.jpg', mid: 35, big: 60 },
-  { sec: 'asmak', name: 'فطير تونة + زيتون',        img: 'IMG-20260829-WA0059.jpg', mid: 35, big: 60 },
+// ── الـ 14 صورة، بأسمائها زي ما هي على المستودع ──
+const FILES = [
+  'file_00000000e1fc82108b3b602b20316989.png',
+  'file_00000000de1882438025f95ade6ab080.png',
+  'file_00000000586881f49f87eb7a52863bf8.png',
+  'file_00000000f72482468a97776e38136dfd.png',
+  'file_000000008d1c81f49edf47dd4f07f42d.png',
+  'file_000000008d1c81f49edf47dd4f07f42d.png', // مكررة مرتين في القايمة اللي بعتيها — امسحي السطر ده لو مش مقصودة
+  'file_00000000e6f481f486268f050a552de5.png',
+  'file_0000000047c48210a121dd70796999d4.png',
+  'file_00000000c83c81f4a2ff52081515b333.png',
+  'file_00000000f22c81f4a28ec929864c8421.png',
+  'file_000000006d1c821090608c1af3db8bd8.png',
+  'file_00000000d3b081f48e51f0157b0f1265.png',
+  'file_00000000d9f081f484337f7acdb1a6b1.png',
+  'file_00000000a4b0824382c8d3069c5f9b35.png',
 ];
 
 document.getElementById('runBtn').onclick = async () => {
@@ -110,68 +76,56 @@ document.getElementById('runBtn').onclick = async () => {
     return;
   }
 
-  // ── دور على قسم "الفطير المشلتت" ──
-  log("🔎 بدور على قسم الفطير المشلتت...");
+  // ── دور على قسم "شوكولاتة" ──
+  log("🔎 بدور على قسم الشوكولاتة...");
   const catsSnap = await getDocs(collection(db, "categories"));
-  let mashaltetDoc = null;
+  let chocDoc = null;
   catsSnap.forEach(d => {
     const data = d.data();
-    if ((data.name || '').includes('مشلتت')) mashaltetDoc = { id: d.id, ...data };
+    if ((data.name || '').includes('شوكولاتة')) chocDoc = { id: d.id, ...data };
   });
 
-  if (!mashaltetDoc) {
-    log("❌ مالقتش قسم اسمه فيه 'مشلتت'. افتحي لوحة الأدمن وشوفي اسم القسم بالظبط، وابعتيهولي لو مختلف.");
+  if (!chocDoc) {
+    log("❌ مالقتش قسم اسمه فيه 'شوكولاتة'. افتحي لوحة الأدمن وشوفي اسم القسم بالظبط، وابعتيهولي لو مختلف.");
     return;
   }
-  log(`✅ لقيت القسم: "${mashaltetDoc.name}" (${mashaltetDoc.id})`);
+  log(`✅ لقيت القسم: "${chocDoc.name}" (${chocDoc.id})`);
 
-  // ── تحقق إننا مش هنكرر الإضافة لو الصفحة اتشغلت قبل كده ──
-  const existingProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", mashaltetDoc.id)));
-  if (existingProdsSnap.size > 0) {
-    log(`⚠️ القسم ده فيه بالفعل ${existingProdsSnap.size} صنف. لو كملتي هيتضاف الـ 35 صنف فوقهم (ممكن يبقوا مكررين).`);
-    if (!confirm(`القسم فيه ${existingProdsSnap.size} صنف بالفعل. متأكد عايز تكمل وتضيف الـ 35 صنف الجداد؟`)) {
+  const existingProdsSnap = await getDocs(query(collection(db, "products"), where("categoryId", "==", chocDoc.id)));
+  let order = existingProdsSnap.size;
+  if (order > 0) {
+    log(`⚠️ القسم ده فيه بالفعل ${order} صنف. لو كملتي هيتضاف الـ ${FILES.length} صورة فوقهم (ممكن يبقوا مكررين لو شغلتي الصفحة قبل كده).`);
+    if (!confirm(`القسم فيه ${order} صنف بالفعل. متأكد عايز تكمل؟`)) {
       log("⏹ اتوقف بناءً على طلبك.");
       return;
     }
   }
 
-  // ── حوّل القسم من نوع "صورة" لنوع "قسم أصناف" وضيف الأقسام الفرعية ──
-  await updateDoc(doc(db, "categories", mashaltetDoc.id), {
-    displayType: 'category',
-    menuImageUrl: '',
-    sections: SECTIONS,
-    updatedAt: serverTimestamp(),
-  });
-  log("✅ اتحول القسم لقسم أصناف عادي وانضافله 5 أقسام فرعية");
-
-  // ── ضيف الأصناف الـ 35 ──
-  let order = existingProdsSnap.size;
-  for (const it of ITEMS) {
+  // ── ضيف الصور كأصناف "صورة بس" ──
+  for (const filename of FILES) {
     await addDoc(collection(db, "products"), {
-      name: it.name,
-      categoryId: mashaltetDoc.id,
-      sectionId: it.sec,
-      imageUrl: img(it.img),
-      sizePrices: [
-        { name: 'وسط', price: it.mid },
-        { name: 'كبير', price: it.big },
-      ],
+      name: `شوكولاتة ${order + 1}`, // للتعرف عليه في لوحة التحكم بس — مش هيظهر للعميل
+      categoryId: chocDoc.id,
+      sectionId: null,
+      imageUrl: img(filename),
       price: null,
+      sizePrices: [],
       description: '',
       flavors: [],
       sizes: [],
       manaeshTypes: [],
       wide: false,
       tall: false,
+      hideInfo: true,
       displayOrder: order++,
       visible: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    log(`✅ ${it.name}`);
+    log(`✅ اتضافت (${filename})`);
   }
 
-  log(`🎉 خلصنا! اتضاف ${ITEMS.length} صنف فطيرة في 5 أقسام فرعية. افتحي الموقع وجربي.`);
+  log(`🎉 خلصنا! اتضاف ${FILES.length} صورة في قسم "${chocDoc.name}". افتحي الموقع وجربي.`);
 };
 </script>
 </body>
