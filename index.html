@@ -104,7 +104,7 @@ document.getElementById('runBtn').onclick = async () => {
   // ── ضيف الصور كأصناف "صورة بس" ──
   for (const filename of FILES) {
     await addDoc(collection(db, "products"), {
-      name: `شوكولاتة ${order + 1}`, // للتعرف عليه في لوحة التحكم بس — مش هيظهر للعميل
+      name: '', // من غير اسم خالص — التعرف عليه في لوحة التحكم هيبقى بالصورة المصغّرة بس
       categoryId: chocDoc.id,
       sectionId: null,
       imageUrl: img(filename),
