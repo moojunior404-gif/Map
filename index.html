@@ -34,6 +34,8 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   body { font-family: 'Noto Kufi Arabic', sans-serif; background: #f4f7f5; }
   .font-mono { font-family: 'Space Mono', monospace; }
@@ -60,11 +62,26 @@ function sectionLabel(section) {
 }
 
 // =====================================================================
-// طبقة التخزين المحلي (localStorage) — بديل السيرفر
-// كل البيانات محفوظة داخل متصفح الجهاز نفسه فقط
+// طبقة التخزين — Firebase Firestore (بدل localStorage)
+// البيانات دلوقتي محفوظة على السحابة، وبتظهر على أي جهاز/متصفح
 // =====================================================================
-const STORAGE_KEY = "barista-book-recipes";
-const CLOUDINARY_KEY = "barista-book-cloudinary";
+
+// 🔧 غيّر القيم دي بإعدادات مشروعك من Firebase Console:
+// Project settings → General → Your apps → Web app → SDK setup and configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCAzWFAapfOlokSjzI5dpGj2VUgZ3nZq4M",
+  authDomain: "parista-ce0c5.firebaseapp.com",
+  projectId: "parista-ce0c5",
+  storageBucket: "parista-ce0c5.firebasestorage.app",
+  messagingSenderId: "94922206411",
+  appId: "1:94922206411:web:26905f338730912a47bf4e",
+};
+
+firebase.initializeApp(firebaseConfig);
+const firestore = firebase.firestore();
+const recipesCol = firestore.collection("recipes");
+
+const CLOUDINARY_KEY = "barista-book-cloudinary"; // إعدادات الصور لسه محلية على الجهاز (مش بيانات أساسية)
 
 const seedRecipes = [
   { id: "recipe-espresso-single", section: "Hot Bar — البار الساخن", title: "إسبريسو مفرد (Espresso Single)", meta: ["المقاس القياسي: 25-30 مل"], ingredients: ["بن مطحون طازة: 9 جم"], equipment: ["ماكينة إسبريسو", "مطحنة", "ميزان دقيق"], steps: ["اطحن 9 جم بن على درجة ناعمة-متوسطة", "وزّع البن وادككه بضغط ثابت", "استخلص لمدة 25-30 ثانية لإنتاج 25-30 مل"], qc: ["زمن الاستخلاص 25-30 ثانية", "كريمة ذهبية ثابتة", "طعم متوازن"], errors: ["طعم حامض: اطحن أنعم أو زوّد الجرعة"], notes: ["المياه بين 93 و96°م"] },
@@ -80,27 +97,39 @@ const seedRecipes = [
   { id: "recipe-vanilla-syrup", section: "الصوصات والإضافات — Toppings & Sauces", title: "سيرب فانيليا (Vanilla Syrup)", meta: ["العائد: حوالي 500 مل"], ingredients: ["مياه: 250 مل", "سكر: 250 جم", "فانيليا: 10 مل"], equipment: ["قدر صغير", "زجاجة تخزين"], steps: ["سخّن المياه والسكر حتى الذوبان دون غليان قوي", "أضف الفانيليا بعد رفع القدر", "اترك السيرب يبرد ثم خزنه في زجاجة نظيفة"], qc: ["قوام صافٍ", "لا توجد بلورات سكر", "رائحة فانيليا واضحة"], errors: ["تبلور السيرب: لا تتركه يغلي طويلًا"], notes: ["يحفظ بالثلاجة حتى أسبوعين"] },
 ].map((r) => ({ isFavorite: false, imageUrl: null, imagePublicId: null, lastOpenedAt: null, ...r }));
 
-function loadRecipes() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedRecipes));
-    return JSON.parse(JSON.stringify(seedRecipes));
-  }
-  try { return JSON.parse(raw); } catch { return JSON.parse(JSON.stringify(seedRecipes)); }
+let seedingPromise = null;
+async function ensureSeeded() {
+  if (seedingPromise) return seedingPromise;
+  seedingPromise = (async () => {
+    const snap = await recipesCol.limit(1).get();
+    if (snap.empty) {
+      const batch = firestore.batch();
+      seedRecipes.forEach((r) => {
+        const { id, ...rest } = r;
+        batch.set(recipesCol.doc(id), rest);
+      });
+      await batch.commit();
+    }
+  })();
+  return seedingPromise;
 }
-function saveRecipes(rows) { localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)); }
+
+function docToRecipe(doc) {
+  return { id: doc.id, ...doc.data() };
+}
+
 function cleanList(values) { return (Array.isArray(values) ? values : []).map((v) => String(v).trim()).filter(Boolean); }
-function delay(ms = 120) { return new Promise((r) => setTimeout(r, ms)); } // إحساس طبيعي بالتحميل
 
 const db = {
   async listRecipes({ search = "", section, view = "all" } = {}) {
-    await delay();
-    let rows = loadRecipes();
+    await ensureSeeded();
+    const snap = await recipesCol.get();
+    let rows = snap.docs.map(docToRecipe);
     if (section && section !== "الكل") rows = rows.filter((r) => r.section === section);
     const q = search.trim().toLocaleLowerCase("ar");
     if (q) {
       rows = rows.filter((r) =>
-        [r.title, r.section, ...r.meta, ...r.ingredients, ...r.equipment, ...r.steps, ...r.notes]
+        [r.title, r.section, ...(r.meta||[]), ...(r.ingredients||[]), ...(r.equipment||[]), ...(r.steps||[]), ...(r.notes||[])]
           .join(" ").toLocaleLowerCase("ar").includes(q)
       );
     }
@@ -110,75 +139,62 @@ const db = {
     return rows;
   },
   async createRecipe(input) {
-    await delay();
     if (!input.title || !input.title.trim()) throw new Error("عنوان مطلوب");
-    const rows = loadRecipes();
     const recipe = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       section: (input.section || "").trim(),
       title: input.title.trim(),
       meta: cleanList(input.meta), ingredients: cleanList(input.ingredients), equipment: cleanList(input.equipment),
       steps: cleanList(input.steps), qc: cleanList(input.qc), errors: cleanList(input.errors), notes: cleanList(input.notes),
       imageUrl: input.imageUrl || null, imagePublicId: input.imagePublicId || null, isFavorite: false, lastOpenedAt: null,
     };
-    rows.push(recipe);
-    saveRecipes(rows);
-    return recipe;
+    const ref = await recipesCol.add(recipe);
+    return { id: ref.id, ...recipe };
   },
   async getRecipe(id) {
-    await delay();
-    const rows = loadRecipes();
-    const idx = rows.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error("غير موجودة");
-    rows[idx].lastOpenedAt = new Date().toISOString();
-    saveRecipes(rows);
-    return rows[idx];
+    const ref = recipesCol.doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) throw new Error("غير موجودة");
+    await ref.update({ lastOpenedAt: new Date().toISOString() });
+    return { id: doc.id, ...doc.data(), lastOpenedAt: new Date().toISOString() };
   },
   async updateRecipe(id, input) {
-    await delay();
-    const rows = loadRecipes();
-    const idx = rows.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error("غير موجودة");
-    const current = rows[idx];
-    const updated = {
-      ...current,
-      ...(input.section !== undefined ? { section: input.section } : {}),
-      ...(input.title !== undefined ? { title: input.title } : {}),
-      ...(input.meta !== undefined ? { meta: cleanList(input.meta) } : {}),
-      ...(input.ingredients !== undefined ? { ingredients: cleanList(input.ingredients) } : {}),
-      ...(input.equipment !== undefined ? { equipment: cleanList(input.equipment) } : {}),
-      ...(input.steps !== undefined ? { steps: cleanList(input.steps) } : {}),
-      ...(input.qc !== undefined ? { qc: cleanList(input.qc) } : {}),
-      ...(input.errors !== undefined ? { errors: cleanList(input.errors) } : {}),
-      ...(input.notes !== undefined ? { notes: cleanList(input.notes) } : {}),
-      ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
-      ...(input.imagePublicId !== undefined ? { imagePublicId: input.imagePublicId } : {}),
-      ...(input.isFavorite !== undefined ? { isFavorite: input.isFavorite } : {}),
-    };
-    rows[idx] = updated;
-    saveRecipes(rows);
-    return updated;
+    const ref = recipesCol.doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) throw new Error("غير موجودة");
+    const patch = {};
+    if (input.section !== undefined) patch.section = input.section;
+    if (input.title !== undefined) patch.title = input.title;
+    if (input.meta !== undefined) patch.meta = cleanList(input.meta);
+    if (input.ingredients !== undefined) patch.ingredients = cleanList(input.ingredients);
+    if (input.equipment !== undefined) patch.equipment = cleanList(input.equipment);
+    if (input.steps !== undefined) patch.steps = cleanList(input.steps);
+    if (input.qc !== undefined) patch.qc = cleanList(input.qc);
+    if (input.errors !== undefined) patch.errors = cleanList(input.errors);
+    if (input.notes !== undefined) patch.notes = cleanList(input.notes);
+    if (input.imageUrl !== undefined) patch.imageUrl = input.imageUrl;
+    if (input.imagePublicId !== undefined) patch.imagePublicId = input.imagePublicId;
+    if (input.isFavorite !== undefined) patch.isFavorite = input.isFavorite;
+    await ref.update(patch);
+    return { id, ...doc.data(), ...patch };
   },
   async deleteRecipe(id) {
-    await delay();
-    const rows = loadRecipes();
-    const idx = rows.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error("غير موجودة");
-    rows.splice(idx, 1);
-    saveRecipes(rows);
+    const ref = recipesCol.doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) throw new Error("غير موجودة");
+    await ref.delete();
   },
   async toggleFavorite(id) {
-    await delay();
-    const rows = loadRecipes();
-    const idx = rows.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error("غير موجودة");
-    rows[idx].isFavorite = !rows[idx].isFavorite;
-    saveRecipes(rows);
-    return rows[idx];
+    const ref = recipesCol.doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) throw new Error("غير موجودة");
+    const next = !doc.data().isFavorite;
+    await ref.update({ isFavorite: next });
+    return { id, ...doc.data(), isFavorite: next };
   },
   async dashboardSummary() {
-    await delay();
-    const rows = loadRecipes();
+    await ensureSeeded();
+    const snap = await recipesCol.get();
+    const rows = snap.docs.map(docToRecipe);
     const sections = [...new Set(rows.map((r) => r.section))];
     return {
       recipeCount: rows.length, sectionCount: sections.length,
@@ -732,8 +748,8 @@ function SettingsPage({ notify }) {
 
         <section className="rounded-[26px] border border-border bg-card p-5 sm:p-7">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary"><Icon d={icons.alert} /></span>
-            <div><h2 className="font-bold">تنبيه هام</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">الوصفات محفوظة في متصفح هذا الجهاز فقط. لو مسحت بيانات المتصفح أو استخدمت جهاز/متصفح تاني، الوصفات اللي ضفتها مش هتظهر.</p></div>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary"><Icon d={icons.check} /></span>
+            <div><h2 className="font-bold">التخزين</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">الوصفات دلوقتي محفوظة على Firebase Firestore — بتظهر على أي جهاز أو متصفح بنفس إعدادات المشروع.</p></div>
           </div>
         </section>
       </div>
