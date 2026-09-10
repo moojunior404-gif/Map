@@ -46,7 +46,6 @@
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useRef } = React;
 
-const API = "/api";
 const recipeSections = [
   "Hot Bar — البار الساخن",
   "Cold Bar — البار البارد",
@@ -60,7 +59,140 @@ function sectionLabel(section) {
   return /[\u0600-\u06ff]/.test(first) ? first : second;
 }
 
-// ---------- Toast (تنبيهات بسيطة بدل مكتبة كاملة) ----------
+// =====================================================================
+// طبقة التخزين المحلي (localStorage) — بديل السيرفر
+// كل البيانات محفوظة داخل متصفح الجهاز نفسه فقط
+// =====================================================================
+const STORAGE_KEY = "barista-book-recipes";
+const CLOUDINARY_KEY = "barista-book-cloudinary";
+
+const seedRecipes = [
+  { id: "recipe-espresso-single", section: "Hot Bar — البار الساخن", title: "إسبريسو مفرد (Espresso Single)", meta: ["المقاس القياسي: 25-30 مل"], ingredients: ["بن مطحون طازة: 9 جم"], equipment: ["ماكينة إسبريسو", "مطحنة", "ميزان دقيق"], steps: ["اطحن 9 جم بن على درجة ناعمة-متوسطة", "وزّع البن وادككه بضغط ثابت", "استخلص لمدة 25-30 ثانية لإنتاج 25-30 مل"], qc: ["زمن الاستخلاص 25-30 ثانية", "كريمة ذهبية ثابتة", "طعم متوازن"], errors: ["طعم حامض: اطحن أنعم أو زوّد الجرعة"], notes: ["المياه بين 93 و96°م"] },
+  { id: "recipe-espresso-double", section: "Hot Bar — البار الساخن", title: "إسبريسو دبل (Espresso Double)", meta: ["المقاس القياسي: 50-60 مل"], ingredients: ["بن مطحون طازة: 18 جم"], equipment: ["ماكينة إسبريسو", "مطحنة", "ميزان دقيق"], steps: ["اطحن 18 جم بن", "وزّع البن وادككه بالتساوي", "استخلص 25-30 ثانية لإنتاج 50-60 مل"], qc: ["الجرعة 18 جم بالضبط", "زمن استخلاص متسق", "كريمة كثيفة"], errors: ["طعم مر: اطحن أخشن أو قلل زمن الاستخلاص"], notes: ["المياه بين 93 و96°م"] },
+  { id: "recipe-americano-hot", section: "Hot Bar — البار الساخن", title: "أمريكانو ساخن (Americano Hot)", meta: ["المقاس القياسي: 8-10 oz"], ingredients: ["إسبريسو دبل: 50-60 مل", "مياه ساخنة: 150-180 مل"], equipment: ["ماكينة إسبريسو", "مصدر مياه ساخنة"], steps: ["سخّن المياه إلى 85-90°م", "اسكب المياه في الكوب أولًا", "اسحب الإسبريسو فوق المياه مباشرة"], qc: ["نسبة مياه وإسبريسو متزنة", "الكريمة ظاهرة على السطح"], errors: ["طعم مخفف: قلل المياه إلى 150 مل"], notes: ["يُقدّم عند 85-90°م"] },
+  { id: "recipe-cappuccino", section: "Hot Bar — البار الساخن", title: "كابتشينو (Cappuccino)", meta: ["المقاس القياسي: 5-6 oz"], ingredients: ["إسبريسو مفرد: 25-30 مل", "حليب كامل الدسم: 120-150 مل"], equipment: ["ماكينة إسبريسو مع Steam Wand", "إبريق ستيمنج"], steps: ["اسحب الإسبريسو في الكوب", "رغّي الحليب حتى 60-65°م بنسبة رغوة متوازنة", "حرّك الإبريق لتوحيد القوام", "اسكب فوق الإسبريسو بطبقة رغوة 1-1.5 سم"], qc: ["رغوة كثيفة لامعة", "الحليب غير محروق", "قوام حريري"], errors: ["فقاعات كبيرة: ارفع طرف الوند قليلًا قرب سطح الحليب"], notes: ["لا تتخطى 65°م", "رشة كاكاو اختيارية"] },
+  { id: "recipe-latte", section: "Hot Bar — البار الساخن", title: "لاتيه (Latte)", meta: ["المقاس القياسي: 10-12 oz"], ingredients: ["إسبريسو دبل: 50-60 مل", "حليب كامل الدسم: 220-250 مل"], equipment: ["ماكينة إسبريسو مع Steam Wand", "إبريق ستيمنج"], steps: ["اسحب الإسبريسو في الكوب", "رغّي الحليب حتى 60-65°م برغوة خفيفة", "اسكب الحليب من ارتفاع منخفض ويمكن عمل Latte Art"], qc: ["رغوة رقيقة ناعمة", "نسبة حليب وإسبريسو متزنة", "طعم حليبي متوازن"], errors: ["رغوة ثقيلة: قلل زمن الرغي"], notes: ["لا تتخطى 65°م"] },
+  { id: "recipe-flat-white", section: "Hot Bar — البار الساخن", title: "وايت فلات (Flat White)", meta: ["المقاس القياسي: 5-6 oz"], ingredients: ["إسبريسو دبل ريستريتو: 40-50 مل", "حليب: 100-120 مل"], equipment: ["ماكينة إسبريسو", "إبريق ستيمنج"], steps: ["اسحب دبل ريستريتو بتركيز أعلى", "رغّي الحليب برغوة دقيقة وناعمة", "اسكب بحرص طبقة رقيقة جدًا"], qc: ["تركيز القهوة أعلى من اللاتيه", "Microfoam ناعم", "قوام حريري"], errors: ["القهوة ضعيفة: استخدم ريستريتو وجرعة أعلى"], notes: ["الحرارة بين 60 و63°م"] },
+  { id: "recipe-mocha", section: "Hot Bar — البار الساخن", title: "موكا (Mocha)", meta: ["المقاس القياسي: 10-12 oz"], ingredients: ["إسبريسو دبل: 50-60 مل", "صوص شوكولاتة: 25-30 جم", "حليب: 200-220 مل"], equipment: ["ماكينة إسبريسو", "إبريق ستيمنج"], steps: ["ضع صوص الشوكولاتة في الكوب", "اسحب الإسبريسو فوقه وقلّب جيدًا", "رغّي الحليب حتى 60-65°م واسكبه فوق الخليط"], qc: ["الشوكولاتة ذائبة بالكامل", "توازن الحلاوة ومرارة القهوة"], errors: ["الصوص راسب: قلّب الإسبريسو والصوص قبل إضافة الحليب"], notes: ["كريمة مخفوقة ورشة كاكاو اختيارية"] },
+  { id: "recipe-iced-latte", section: "Cold Bar — البار البارد", title: "آيس لاتيه (Iced Latte)", meta: ["المقاس القياسي: 12-16 oz"], ingredients: ["إسبريسو دبل", "حليب بارد: 180 مل", "ثلج مكعبات"], equipment: ["ماكينة إسبريسو", "كوب تقديم", "ملعقة بار"], steps: ["املأ الكوب بالثلج حتى ثلاثة أرباعه", "أضف الحليب البارد", "اسحب الإسبريسو واسكبه فوق الحليب"], qc: ["المشروب بارد بالكامل", "طبقات واضحة قبل التقليب", "لا يوجد ذوبان زائد"], errors: ["المشروب مخفف: استخدم ثلجًا أكبر واسكب الإسبريسو سريعًا"], notes: ["قدّم فورًا"] },
+  { id: "recipe-iced-americano", section: "Cold Bar — البار البارد", title: "آيس أمريكانو (Iced Americano)", meta: ["المقاس القياسي: 12-16 oz"], ingredients: ["إسبريسو دبل", "مياه باردة: 180 مل", "ثلج مكعبات"], equipment: ["ماكينة إسبريسو", "كوب تقديم"], steps: ["املأ الكوب بالثلج", "أضف المياه الباردة", "اسكب الإسبريسو فوق المياه والثلج"], qc: ["توازن واضح بين الماء والقهوة", "المشروب بارد"], errors: ["مرارة زائدة: راجع زمن الاستخلاص"], notes: ["قلب قبل التقديم"] },
+  { id: "recipe-chocolate-cake", section: "المخبوزات والحلويات — Desserts & Bakery", title: "كيكة شوكولاتة طرية", meta: ["العائد: قالب 20 سم"], ingredients: ["دقيق: 180 جم", "كاكاو: 40 جم", "سكر: 180 جم", "بيضتان"], equipment: ["وعاء خلط", "مضرب", "قالب فرن"], steps: ["اخلط المكونات الجافة معًا", "أضف البيض والسوائل واخلط حتى التجانس", "اخبز على 175°م حتى يخرج العود نظيفًا"], qc: ["سطح متماسك", "قلب رطب", "طعم شوكولاتة واضح"], errors: ["القلب جاف: قلل زمن الخَبز"], notes: ["تبرد قبل التقطيع"] },
+  { id: "recipe-vanilla-syrup", section: "الصوصات والإضافات — Toppings & Sauces", title: "سيرب فانيليا (Vanilla Syrup)", meta: ["العائد: حوالي 500 مل"], ingredients: ["مياه: 250 مل", "سكر: 250 جم", "فانيليا: 10 مل"], equipment: ["قدر صغير", "زجاجة تخزين"], steps: ["سخّن المياه والسكر حتى الذوبان دون غليان قوي", "أضف الفانيليا بعد رفع القدر", "اترك السيرب يبرد ثم خزنه في زجاجة نظيفة"], qc: ["قوام صافٍ", "لا توجد بلورات سكر", "رائحة فانيليا واضحة"], errors: ["تبلور السيرب: لا تتركه يغلي طويلًا"], notes: ["يحفظ بالثلاجة حتى أسبوعين"] },
+].map((r) => ({ isFavorite: false, imageUrl: null, imagePublicId: null, lastOpenedAt: null, ...r }));
+
+function loadRecipes() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedRecipes));
+    return JSON.parse(JSON.stringify(seedRecipes));
+  }
+  try { return JSON.parse(raw); } catch { return JSON.parse(JSON.stringify(seedRecipes)); }
+}
+function saveRecipes(rows) { localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)); }
+function cleanList(values) { return (Array.isArray(values) ? values : []).map((v) => String(v).trim()).filter(Boolean); }
+function delay(ms = 120) { return new Promise((r) => setTimeout(r, ms)); } // إحساس طبيعي بالتحميل
+
+const db = {
+  async listRecipes({ search = "", section, view = "all" } = {}) {
+    await delay();
+    let rows = loadRecipes();
+    if (section && section !== "الكل") rows = rows.filter((r) => r.section === section);
+    const q = search.trim().toLocaleLowerCase("ar");
+    if (q) {
+      rows = rows.filter((r) =>
+        [r.title, r.section, ...r.meta, ...r.ingredients, ...r.equipment, ...r.steps, ...r.notes]
+          .join(" ").toLocaleLowerCase("ar").includes(q)
+      );
+    }
+    if (view === "favorites") rows = rows.filter((r) => r.isFavorite);
+    if (view === "recent") rows = rows.filter((r) => r.lastOpenedAt).sort((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt));
+    else rows.sort((a, b) => a.title.localeCompare(b.title, "ar"));
+    return rows;
+  },
+  async createRecipe(input) {
+    await delay();
+    if (!input.title || !input.title.trim()) throw new Error("عنوان مطلوب");
+    const rows = loadRecipes();
+    const recipe = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      section: (input.section || "").trim(),
+      title: input.title.trim(),
+      meta: cleanList(input.meta), ingredients: cleanList(input.ingredients), equipment: cleanList(input.equipment),
+      steps: cleanList(input.steps), qc: cleanList(input.qc), errors: cleanList(input.errors), notes: cleanList(input.notes),
+      imageUrl: input.imageUrl || null, imagePublicId: input.imagePublicId || null, isFavorite: false, lastOpenedAt: null,
+    };
+    rows.push(recipe);
+    saveRecipes(rows);
+    return recipe;
+  },
+  async getRecipe(id) {
+    await delay();
+    const rows = loadRecipes();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("غير موجودة");
+    rows[idx].lastOpenedAt = new Date().toISOString();
+    saveRecipes(rows);
+    return rows[idx];
+  },
+  async updateRecipe(id, input) {
+    await delay();
+    const rows = loadRecipes();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("غير موجودة");
+    const current = rows[idx];
+    const updated = {
+      ...current,
+      ...(input.section !== undefined ? { section: input.section } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.meta !== undefined ? { meta: cleanList(input.meta) } : {}),
+      ...(input.ingredients !== undefined ? { ingredients: cleanList(input.ingredients) } : {}),
+      ...(input.equipment !== undefined ? { equipment: cleanList(input.equipment) } : {}),
+      ...(input.steps !== undefined ? { steps: cleanList(input.steps) } : {}),
+      ...(input.qc !== undefined ? { qc: cleanList(input.qc) } : {}),
+      ...(input.errors !== undefined ? { errors: cleanList(input.errors) } : {}),
+      ...(input.notes !== undefined ? { notes: cleanList(input.notes) } : {}),
+      ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+      ...(input.imagePublicId !== undefined ? { imagePublicId: input.imagePublicId } : {}),
+      ...(input.isFavorite !== undefined ? { isFavorite: input.isFavorite } : {}),
+    };
+    rows[idx] = updated;
+    saveRecipes(rows);
+    return updated;
+  },
+  async deleteRecipe(id) {
+    await delay();
+    const rows = loadRecipes();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("غير موجودة");
+    rows.splice(idx, 1);
+    saveRecipes(rows);
+  },
+  async toggleFavorite(id) {
+    await delay();
+    const rows = loadRecipes();
+    const idx = rows.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error("غير موجودة");
+    rows[idx].isFavorite = !rows[idx].isFavorite;
+    saveRecipes(rows);
+    return rows[idx];
+  },
+  async dashboardSummary() {
+    await delay();
+    const rows = loadRecipes();
+    const sections = [...new Set(rows.map((r) => r.section))];
+    return {
+      recipeCount: rows.length, sectionCount: sections.length,
+      favoriteCount: rows.filter((r) => r.isFavorite).length,
+      recentCount: rows.filter((r) => r.lastOpenedAt).length, sections,
+    };
+  },
+  getCloudinaryConfig() {
+    try { return JSON.parse(localStorage.getItem(CLOUDINARY_KEY) || "null"); } catch { return null; }
+  },
+  setCloudinaryConfig(cfg) { localStorage.setItem(CLOUDINARY_KEY, JSON.stringify(cfg)); },
+};
+
+// ---------- Toast ----------
 function useToast() {
   const [toasts, setToasts] = useState([]);
   const notify = (title, description, variant) => {
@@ -81,24 +213,7 @@ function useToast() {
   return { notify, ToastHost };
 }
 
-// ---------- API helpers ----------
-async function apiGet(path) {
-  const res = await fetch(API + path);
-  if (!res.ok) throw new Error("request failed");
-  return res.json();
-}
-async function apiSend(path, method, body) {
-  const res = await fetch(API + path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok && res.status !== 204) throw new Error("request failed");
-  if (res.status === 204) return null;
-  return res.json();
-}
-
-// ---------- Icons (بسيطة، بدل مكتبة أيقونات كاملة) ----------
+// ---------- Icons ----------
 const Icon = ({ d, className = "h-4 w-4" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d={d} />
@@ -125,15 +240,8 @@ const icons = {
   coffee: "M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z M6 1v3M10 1v3M14 1v3",
 };
 
-// ---------- Recipe image ----------
 function RecipeImage({ src, alt, className = "" }) {
-  if (!src) {
-    return (
-      <div className={`grid place-items-center bg-secondary text-primary/40 ${className}`}>
-        <Icon d={icons.coffee} className="h-8 w-8" />
-      </div>
-    );
-  }
+  if (!src) return <div className={`grid place-items-center bg-secondary text-primary/40 ${className}`}><Icon d={icons.coffee} className="h-8 w-8" /></div>;
   return <img src={src} alt={alt} className={`object-cover ${className}`} />;
 }
 
@@ -144,12 +252,8 @@ function Shell({ view, setView, children }) {
   const isSettings = view.name === "settings";
 
   const NavItem = ({ target, icon, label, active, onClick }) => (
-    <button
-      onClick={onClick || (() => setView({ name: target }))}
-      className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold w-full text-right transition-colors ${active ? "bg-white/10 text-accent" : "text-white/65 hover:bg-white/5"}`}
-    >
-      <span className="grid h-7 w-7 place-items-center"><Icon d={icon} /></span>
-      {label}
+    <button onClick={onClick || (() => setView({ name: target }))} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold w-full text-right transition-colors ${active ? "bg-white/10 text-accent" : "text-white/65 hover:bg-white/5"}`}>
+      <span className="grid h-7 w-7 place-items-center"><Icon d={icon} /></span>{label}
     </button>
   );
 
@@ -168,9 +272,7 @@ function Shell({ view, setView, children }) {
         </aside>
 
         <header className="sticky top-0 z-30 flex h-[64px] items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
-          <button onClick={() => setMenuOpen((o) => !o)} className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card text-primary">
-            <Icon d={menuOpen ? icons.x : icons.list} />
-          </button>
+          <button onClick={() => setMenuOpen((o) => !o)} className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card text-primary"><Icon d={menuOpen ? icons.x : icons.list} /></button>
           <button onClick={() => setView({ name: "home" })} className="flex items-center gap-2">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-primary"><Icon d={icons.coffee} className="h-4 w-4" /></span>
             <span className="text-sm font-bold">بارستا بوك</span>
@@ -187,15 +289,9 @@ function Shell({ view, setView, children }) {
         <main className="min-w-0 flex-1 pb-24 lg:pb-0">{children}</main>
 
         <nav className="fixed inset-x-0 bottom-0 z-30 grid h-[70px] grid-cols-3 border-t border-border bg-card/95 px-4 pb-2 pt-2 backdrop-blur lg:hidden">
-          <button onClick={() => setView({ name: "home" })} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-semibold ${isHome ? "text-primary" : "text-muted-foreground"}`}>
-            <Icon d={icons.home} /> الرئيسية
-          </button>
-          <button onClick={() => setView({ name: "new" })} className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground">
-            <Icon d={icons.plus} /> إضافة
-          </button>
-          <button onClick={() => setView({ name: "settings" })} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-semibold ${isSettings ? "text-primary" : "text-muted-foreground"}`}>
-            <Icon d={icons.settings} /> الإعدادات
-          </button>
+          <button onClick={() => setView({ name: "home" })} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-semibold ${isHome ? "text-primary" : "text-muted-foreground"}`}><Icon d={icons.home} /> الرئيسية</button>
+          <button onClick={() => setView({ name: "new" })} className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground"><Icon d={icons.plus} /> إضافة</button>
+          <button onClick={() => setView({ name: "settings" })} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-semibold ${isSettings ? "text-primary" : "text-muted-foreground"}`}><Icon d={icons.settings} /> الإعدادات</button>
         </nav>
       </div>
     </div>
@@ -227,10 +323,7 @@ function StatStrip({ summary }) {
       {stats.map((s) => (
         <div key={s.label} className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-3.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><Icon d={s.icon} /></span>
-          <span className="min-w-0">
-            <strong className="block font-mono text-lg leading-none text-primary">{s.value}</strong>
-            <span className="mt-1 block truncate text-[10px] text-muted-foreground">{s.label}</span>
-          </span>
+          <span className="min-w-0"><strong className="block font-mono text-lg leading-none text-primary">{s.value}</strong><span className="mt-1 block truncate text-[10px] text-muted-foreground">{s.label}</span></span>
         </div>
       ))}
     </div>
@@ -280,7 +373,7 @@ function ErrorState({ onRetry }) {
   );
 }
 
-// ---------- Library (home) ----------
+// ---------- Library ----------
 function LibraryPage({ setView, notify }) {
   const [search, setSearch] = useState("");
   const [section, setSection] = useState("الكل");
@@ -291,37 +384,20 @@ function LibraryPage({ setView, notify }) {
 
   const load = () => {
     setError(false);
-    const params = new URLSearchParams();
-    if (search.trim()) params.set("search", search.trim());
-    if (section !== "الكل") params.set("section", section);
-    if (view !== "all") params.set("view", view);
-    apiGet("/recipes?" + params.toString()).then(setRecipes).catch(() => setError(true));
+    db.listRecipes({ search, section, view }).then(setRecipes).catch(() => setError(true));
   };
-
   useEffect(() => { load(); }, [search, section, view]);
-  useEffect(() => { apiGet("/dashboard-summary").then(setSummary).catch(() => {}); }, [recipes]);
+  useEffect(() => { db.dashboardSummary().then(setSummary).catch(() => {}); }, [recipes]);
 
-  const sectionOptions = summary?.sections?.length
-    ? ["الكل", ...summary.sections]
-    : ["الكل", ...recipeSections];
+  const sectionOptions = summary?.sections?.length ? ["الكل", ...summary.sections] : ["الكل", ...recipeSections];
 
-  const handleFavorite = (recipe) => {
-    apiSend(`/recipes/${recipe.id}/favorite`, "POST").then(load).catch(() => notify("تعذر تحديث المفضلة", "", "destructive"));
-  };
+  const handleFavorite = (recipe) => db.toggleFavorite(recipe.id).then(load).catch(() => notify("تعذر تحديث المفضلة", "", "destructive"));
 
   return (
     <div className="min-h-[100dvh] px-4 py-6 sm:px-8 sm:py-9 lg:px-10">
       <div className="mx-auto max-w-[1000px] space-y-6">
-        <PageHeading
-          eyebrow="BARISTA KNOWLEDGE SYSTEM"
-          title="كل وصفة في مكانها الصحيح"
-          description="ابحث عن أي وصفة وراجع المقادير وخطوات التحضير بسهولة."
-          action={
-            <button onClick={() => setView({ name: "new" })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">
-              <Icon d={icons.plus} className="h-4 w-4" /> إضافة وصفة
-            </button>
-          }
-        />
+        <PageHeading eyebrow="BARISTA KNOWLEDGE SYSTEM" title="كل وصفة في مكانها الصحيح" description="ابحث عن أي وصفة وراجع المقادير وخطوات التحضير بسهولة."
+          action={<button onClick={() => setView({ name: "new" })} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><Icon d={icons.plus} className="h-4 w-4" /> إضافة وصفة</button>} />
 
         <div className="relative">
           <Icon d={icons.search} className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
@@ -331,9 +407,7 @@ function LibraryPage({ setView, notify }) {
 
         <div className="flex gap-2 overflow-x-auto pb-1">
           {sectionOptions.map((s) => (
-            <button key={s} onClick={() => setSection(s)} className={`shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold ${section === s ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>
-              {sectionLabel(s)}
-            </button>
+            <button key={s} onClick={() => setSection(s)} className={`shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold ${section === s ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}`}>{sectionLabel(s)}</button>
           ))}
         </div>
 
@@ -353,9 +427,7 @@ function LibraryPage({ setView, notify }) {
         {recipes && recipes.length === 0 && <EmptyState search={search} onAdd={() => setView({ name: "new" })} />}
         {recipes && recipes.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2">
-            {recipes.map((r) => (
-              <RecipeCard key={r.id} recipe={r} onFavorite={() => handleFavorite(r)} onOpen={() => setView({ name: "detail", id: r.id })} />
-            ))}
+            {recipes.map((r) => <RecipeCard key={r.id} recipe={r} onFavorite={() => handleFavorite(r)} onOpen={() => setView({ name: "detail", id: r.id })} />)}
           </div>
         )}
       </div>
@@ -363,7 +435,7 @@ function LibraryPage({ setView, notify }) {
   );
 }
 
-// ---------- Recipe detail ----------
+// ---------- Detail ----------
 function InfoSection({ title, icon, items, numbered = false, accent = "green" }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -399,16 +471,10 @@ function PreparationOverlay({ recipe, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 backdrop-blur-sm sm:items-center">
       <div className="w-full max-w-[420px] rounded-[28px] border border-border bg-card p-6 shadow-2xl">
         <div className="flex items-start justify-between">
-          <div>
-            <p className="font-mono text-[10px] font-bold tracking-[.18em] text-primary">PREP MODE</p>
-            <h2 className="mt-2 text-xl font-bold">وضع التحضير</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{recipe.title}</p>
-          </div>
+          <div><p className="font-mono text-[10px] font-bold tracking-[.18em] text-primary">PREP MODE</p><h2 className="mt-2 text-xl font-bold">وضع التحضير</h2><p className="mt-1 text-xs text-muted-foreground">{recipe.title}</p></div>
           <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Icon d={icons.x} /></button>
         </div>
-        <div className="my-8 text-center">
-          <div className="font-mono text-6xl font-bold text-primary">{mm}:{ss}</div>
-        </div>
+        <div className="my-8 text-center"><div className="font-mono text-6xl font-bold text-primary">{mm}:{ss}</div></div>
         <div className="flex items-center gap-2">
           <button onClick={() => setSeconds(0)} className="grid h-12 w-12 place-items-center rounded-xl border border-border text-muted-foreground"><Icon d={icons.timerReset} /></button>
           <button onClick={() => { setSeconds(seconds > 0 ? seconds : 30); setActive(!active); }} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground">{active ? "إيقاف المؤقت" : "ابدأ المؤقت"}</button>
@@ -425,16 +491,16 @@ function RecipeDetailPage({ id, setView, notify }) {
   const [editing, setEditing] = useState(false);
   const [preparing, setPreparing] = useState(false);
 
-  const load = () => { setError(false); apiGet(`/recipes/${id}`).then(setRecipe).catch(() => setError(true)); };
+  const load = () => { setError(false); db.getRecipe(id).then(setRecipe).catch(() => setError(true)); };
   useEffect(load, [id]);
 
   if (error) return <div className="px-5 py-10"><ErrorState onRetry={load} /></div>;
   if (!recipe) return <div className="mx-auto max-w-[900px] space-y-4 px-5 py-8">{[0,1,2].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary animate-pulse" />)}</div>;
 
-  const handleFavorite = () => apiSend(`/recipes/${id}/favorite`, "POST").then(setRecipe).catch(() => notify("تعذر تحديث المفضلة", "", "destructive"));
+  const handleFavorite = () => db.toggleFavorite(id).then(setRecipe).catch(() => notify("تعذر تحديث المفضلة", "", "destructive"));
   const handleDelete = () => {
     if (!window.confirm("هل تريد حذف هذه الوصفة نهائيًا؟")) return;
-    apiSend(`/recipes/${id}`, "DELETE").then(() => { notify("تم حذف الوصفة"); setView({ name: "home" }); }).catch(() => notify("تعذر حذف الوصفة", "", "destructive"));
+    db.deleteRecipe(id).then(() => { notify("تم حذف الوصفة"); setView({ name: "home" }); }).catch(() => notify("تعذر حذف الوصفة", "", "destructive"));
   };
 
   return (
@@ -454,9 +520,7 @@ function RecipeDetailPage({ id, setView, notify }) {
               <span className="font-mono text-[10px] font-bold tracking-[.18em] text-accent">{sectionLabel(recipe.section)}</span>
               <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{recipe.title}</h1>
             </div>
-            <button onClick={handleFavorite} className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-xl bg-card/90 text-primary shadow">
-              <Icon d={icons.heart} className={`h-5 w-5 ${recipe.isFavorite ? "fill-accent text-accent-foreground" : ""}`} />
-            </button>
+            <button onClick={handleFavorite} className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-xl bg-card/90 text-primary shadow"><Icon d={icons.heart} className={`h-5 w-5 ${recipe.isFavorite ? "fill-accent text-accent-foreground" : ""}`} /></button>
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-border px-5 py-4 sm:px-7">
             {(recipe.meta || []).map((m) => <span key={m} className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-primary">{m}</span>)}
@@ -514,7 +578,7 @@ function RecipeEditorDialog({ recipe, onClose, onSaved, notify }) {
       ...(imageUrl ? { imageUrl } : {}),
     };
     setSaving(true);
-    const req = recipe ? apiSend(`/recipes/${recipe.id}`, "PATCH", payload) : apiSend("/recipes", "POST", payload);
+    const req = recipe ? db.updateRecipe(recipe.id, payload) : db.createRecipe(payload);
     req.then(onSaved).catch(() => { setSaving(false); notify("تعذر حفظ الوصفة", "", "destructive"); });
   };
 
@@ -550,9 +614,7 @@ function RecipeEditorDialog({ recipe, onClose, onSaved, notify }) {
           </label>
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row">
             <button type="button" onClick={onClose} className="h-11 rounded-xl border border-border px-5 text-xs font-bold text-muted-foreground">إلغاء</button>
-            <button type="submit" disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground disabled:opacity-60">
-              {saving ? "جارٍ الحفظ..." : <><Icon d={icons.check} className="h-4 w-4" /> حفظ الوصفة</>}
-            </button>
+            <button type="submit" disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground disabled:opacity-60">{saving ? "جارٍ الحفظ..." : <><Icon d={icons.check} className="h-4 w-4" /> حفظ الوصفة</>}</button>
           </div>
         </form>
       </div>
@@ -566,9 +628,7 @@ function NewRecipePage({ setView, notify }) {
       <div className="mx-auto max-w-[700px]">
         <PageHeading eyebrow="NEW ENTRY" title="أضف وصفة للبار" description="اجعل خطواتك المضمونة جاهزة لكل من يعمل معك."
           action={<button onClick={() => setView({ name: "home" })} className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground"><Icon d={icons.arrowRight} className="h-4 w-4" /> رجوع</button>} />
-        <div className="mt-8">
-          <RecipeEditorDialog onClose={() => setView({ name: "home" })} notify={notify} onSaved={(r) => { notify("تمت إضافة الوصفة", r.title); setView({ name: "detail", id: r.id }); }} />
-        </div>
+        <div className="mt-8"><RecipeEditorDialog onClose={() => setView({ name: "home" })} notify={notify} onSaved={(r) => { notify("تمت إضافة الوصفة", r.title); setView({ name: "detail", id: r.id }); }} /></div>
       </div>
     </div>
   );
@@ -579,34 +639,40 @@ function SettingsPage({ notify }) {
   const [recipes, setRecipes] = useState(null);
   const [selectedId, setSelectedId] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [cloudinaryReady, setCloudinaryReady] = useState(null);
+  const [cfg, setCfg] = useState(() => db.getCloudinaryConfig());
+  const [cloudName, setCloudName] = useState(cfg?.cloudName || "");
+  const [uploadPreset, setUploadPreset] = useState(cfg?.uploadPreset || "");
   const fileRef = useRef(null);
 
-  useEffect(() => {
-    apiGet("/recipes").then(setRecipes).catch(() => setRecipes([]));
-    fetch(API + "/cloudinary-config").then((r) => setCloudinaryReady(r.ok)).catch(() => setCloudinaryReady(false));
-  }, []);
-
+  useEffect(() => { db.listRecipes().then(setRecipes); }, []);
   const selectedRecipe = recipes?.find((r) => r.id === selectedId);
+
+  const saveCloudinaryCfg = (e) => {
+    e.preventDefault();
+    if (!cloudName.trim() || !uploadPreset.trim()) { notify("املأ الاسمين أولًا", "", "destructive"); return; }
+    const newCfg = { cloudName: cloudName.trim(), uploadPreset: uploadPreset.trim() };
+    db.setCloudinaryConfig(newCfg);
+    setCfg(newCfg);
+    notify("تم حفظ إعدادات Cloudinary");
+  };
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedRecipe) return;
+    if (!file || !selectedRecipe || !cfg) return;
     setUploading(true);
     try {
-      const cfg = await apiGet("/cloudinary-config");
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", cfg.uploadPreset);
-      formData.append("folder", cfg.folder);
+      formData.append("folder", "barista-book/recipes");
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, { method: "POST", body: formData });
       if (!res.ok) throw new Error("upload failed");
       const uploaded = await res.json();
-      const updated = await apiSend(`/recipes/${selectedRecipe.id}`, "PATCH", { imageUrl: uploaded.secure_url, imagePublicId: uploaded.public_id });
+      const updated = await db.updateRecipe(selectedRecipe.id, { imageUrl: uploaded.secure_url, imagePublicId: uploaded.public_id });
       setRecipes((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
       notify("تم تحديث صورة الوصفة");
     } catch {
-      notify("تعذر رفع الصورة", "تأكد من إعداد Cloudinary أولًا.", "destructive");
+      notify("تعذر رفع الصورة", "تأكد من اسم الحساب والـ preset.", "destructive");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -616,16 +682,32 @@ function SettingsPage({ notify }) {
   return (
     <div className="min-h-[100dvh] px-4 py-6 sm:px-8 sm:py-9 lg:px-10">
       <div className="mx-auto max-w-[800px] space-y-6">
-        <PageHeading eyebrow="WORKSPACE SETTINGS" title="الإعدادات" description="إدارة صور الوصفات." />
+        <PageHeading eyebrow="WORKSPACE SETTINGS" title="الإعدادات" description="إدارة صور الوصفات وإعدادات Cloudinary." />
+
+        <section className="rounded-[26px] border border-border bg-card p-5 sm:p-7">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><Icon d={icons.settings} /></span>
+            <div><h2 className="font-bold">إعدادات Cloudinary</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">اسم الحساب واسم الـ upload preset (لازم يكون Unsigned). محفوظة على هذا الجهاز فقط.</p></div>
+          </div>
+          <form onSubmit={saveCloudinaryCfg} className="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <label className="block text-xs font-bold">Cloud name
+              <input value={cloudName} onChange={(e) => setCloudName(e.target.value)} dir="ltr" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none focus:ring-4 focus:ring-primary/15" placeholder="dxyz123abc" />
+            </label>
+            <label className="block text-xs font-bold">Upload preset
+              <input value={uploadPreset} onChange={(e) => setUploadPreset(e.target.value)} dir="ltr" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none focus:ring-4 focus:ring-primary/15" placeholder="my-unsigned-preset" />
+            </label>
+            <button type="submit" className="h-11 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground">حفظ</button>
+          </form>
+        </section>
+
         <section className="rounded-[26px] border border-border bg-card p-5 sm:p-7">
           <div className="flex items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><Icon d={icons.upload} /></span>
             <div><h2 className="font-bold">صور الوصفات</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">اختر وصفة ثم ارفع صورة حقيقية من البار.</p></div>
           </div>
-          {cloudinaryReady === false && (
+          {!cfg && (
             <div className="mt-5 flex gap-3 rounded-2xl border border-accent/50 bg-accent/15 p-4 text-xs leading-6 text-accent-foreground">
-              <Icon d={icons.alert} className="mt-0.5 h-4 w-4 shrink-0" />
-              <p><strong>Cloudinary غير مُعد بعد.</strong> أضف CLOUDINARY_CLOUD_NAME و CLOUDINARY_UPLOAD_PRESET (unsigned) كمتغيرات بيئة على السيرفر.</p>
+              <Icon d={icons.alert} className="mt-0.5 h-4 w-4 shrink-0" /><p><strong>Cloudinary غير مُعد بعد.</strong> احفظ الإعدادات فوق أولًا.</p>
             </div>
           )}
           <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -635,7 +717,7 @@ function SettingsPage({ notify }) {
                 {recipes?.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
               </select>
             </label>
-            <button disabled={!selectedRecipe || uploading || cloudinaryReady === false} onClick={() => fileRef.current?.click()} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground disabled:opacity-45">
+            <button disabled={!selectedRecipe || uploading || !cfg} onClick={() => fileRef.current?.click()} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground disabled:opacity-45">
               <Icon d={icons.upload} className="h-4 w-4" />{uploading ? "جارٍ الرفع..." : selectedRecipe?.imageUrl ? "استبدال الصورة" : "رفع صورة"}
             </button>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleUpload} />
@@ -646,6 +728,13 @@ function SettingsPage({ notify }) {
               <div className="min-w-0"><p className="truncate text-sm font-bold">{selectedRecipe.title}</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{selectedRecipe.imageUrl ? "صورة مضافة" : "لا توجد صورة بعد"}</p></div>
             </div>
           )}
+        </section>
+
+        <section className="rounded-[26px] border border-border bg-card p-5 sm:p-7">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary"><Icon d={icons.alert} /></span>
+            <div><h2 className="font-bold">تنبيه هام</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">الوصفات محفوظة في متصفح هذا الجهاز فقط. لو مسحت بيانات المتصفح أو استخدمت جهاز/متصفح تاني، الوصفات اللي ضفتها مش هتظهر.</p></div>
+          </div>
         </section>
       </div>
     </div>
